@@ -1,0 +1,483 @@
+<div class="min-h-screen bg-gray-50 flex">
+
+  <app-patient-sidebar></app-patient-sidebar>
+
+  <div class="ml-56 flex-1">
+
+    @if (isLoading()) {
+      <div class="flex items-center justify-center
+                  py-24 gap-3">
+        <svg class="w-5 h-5 animate-spin text-blue-500"
+             fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12"
+                  r="10" stroke="currentColor"
+                  stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0
+                   0 5.373 0 12h4z"/>
+        </svg>
+      </div>
+    }
+
+    @if (errorMsg()) {
+      <div class="px-8 py-6">
+        <div class="bg-red-50 border border-red-200
+                    rounded-lg p-4 text-sm
+                    text-red-600">
+          {{ errorMsg() }}
+        </div>
+      </div>
+    }
+
+    @if (!isLoading() && dashboard()) {
+      <div class="px-8 py-6">
+
+        <!-- Bandeau changement de niveau -->
+        @if (levelUpInfo()) {
+          <div class="mb-6 flex items-center justify-between
+                      gap-4 bg-emerald-50 border
+                      border-emerald-200 rounded-xl
+                      px-5 py-3.5">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-lg bg-emerald-100
+                          flex items-center justify-center
+                          text-lg shrink-0">
+                🎉
+              </div>
+              <p class="text-sm text-emerald-700">
+                <span class="font-semibold">
+                  Félicitations !
+                </span>
+                Vous êtes passé du niveau
+                <span class="font-semibold">
+                  {{ getLevelLabel(levelUpInfo()!.previous) }}
+                </span>
+                au niveau
+                <span class="font-semibold">
+                  {{ getLevelLabel(levelUpInfo()!.current) }}
+                </span>
+                🎉
+              </p>
+            </div>
+            <button (click)="dismissLevelUp()"
+                    class="text-emerald-500
+                           hover:text-emerald-700
+                           shrink-0">
+              <svg class="w-5 h-5" fill="none"
+                   viewBox="0 0 24 24"
+                   stroke="currentColor">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+        }
+
+        <!-- Header -->
+        <div class="flex items-start justify-between
+                    mb-6">
+          <div>
+            <p class="text-gray-400 text-sm">Bonjour,</p>
+            <h1 class="text-2xl font-bold text-gray-900
+                       flex items-center gap-2">
+              {{ dashboard()!.profile.fullName }} 👋
+            </h1>
+            <p class="text-sm text-gray-400 mt-1">
+              Bonne reprise ! Continuez vos efforts.
+            </p>
+            <div class="flex items-center gap-3 mt-4">
+
+              <!-- Badge Pathologie -->
+              <div class="flex items-center gap-3
+                          bg-white border
+                          border-gray-100 rounded-xl
+                          pl-3 pr-4 py-2 shadow-sm">
+                <div class="w-9 h-9 rounded-lg
+                            bg-blue-50 flex
+                            items-center
+                            justify-center
+                            text-base">
+                  {{ getPathologyIcon(
+                     dashboard()!.profile.pathology) }}
+                </div>
+                <div>
+                  <p class="text-[10px]
+                            text-gray-400
+                            uppercase
+                            tracking-wider
+                            leading-none">
+                    Pathologie
+                  </p>
+                  <p class="text-sm font-semibold
+                            text-gray-800
+                            leading-tight mt-0.5">
+                    {{ getPathologyLabel(
+                       dashboard()!.profile.pathology) }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Badge Niveau -->
+              <div class="flex items-center gap-3
+                          bg-white border
+                          border-gray-100 rounded-xl
+                          pl-3 pr-4 py-2 shadow-sm">
+                <div class="w-9 h-9 rounded-lg
+                            flex items-center
+                            justify-center"
+                     [ngClass]="getLevelConfig(
+                       dashboard()!.profile.level).bg">
+                  <svg class="w-4 h-4"
+                       [ngClass]="getLevelConfig(
+                         dashboard()!.profile.level
+                       ).color"
+                       fill="none"
+                       viewBox="0 0 24 24"
+                       stroke="currentColor">
+                    <path stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2.5"
+                          d="M13 7h8m0 0v8m0-8l-8 8
+                             -4-4-6 6"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-[10px]
+                            text-gray-400
+                            uppercase
+                            tracking-wider
+                            leading-none">
+                    Niveau
+                  </p>
+                  <div class="flex items-center
+                              gap-2 mt-0.5">
+                    <p class="text-sm font-semibold
+                              text-gray-800
+                              leading-tight">
+                      {{ getLevelLabel(
+                         dashboard()!.profile.level) }}
+                    </p>
+                    <span class="flex items-center
+                                 gap-0.5">
+                      @for (i of [1,2,3]; track i) {
+                        <span class="w-1.5 h-1.5
+                                     rounded-full"
+                              [ngClass]="i <=
+                                getLevelConfig(
+                                  dashboard()!
+                                  .profile.level
+                                ).dots
+                                ? getLevelConfig(
+                                    dashboard()!
+                                    .profile.level
+                                  ).dot
+                                : 'bg-gray-200'">
+                        </span>
+                      }
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <button class="relative">
+              <svg class="w-5 h-5 text-gray-400"
+                   fill="none" viewBox="0 0 24 24"
+                   stroke="currentColor">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 17h5l-1.405-1.405A2.032
+                         2.032 0 0118 14.158V11a6.002
+                         6.002 0 00-4-5.659V5a2 2 0
+                         10-4 0v.341C7.67 6.165 6
+                         8.388 6 11v3.159c0 .538-.214
+                         1.055-.595 1.436L4 17h5m6
+                         0v1a3 3 0 11-6 0v-1m6 0H9"/>
+              </svg>
+            </button>
+            <div class="w-9 h-9 rounded-full
+                        bg-blue-600 text-white text-xs
+                        font-bold flex items-center
+                        justify-center">
+              {{ dashboard()!.profile.fullName
+                 .charAt(0) }}
+            </div>
+            <button (click)="startSession()"
+                    class="flex items-center gap-2
+                           bg-blue-600 hover:bg-blue-700
+                           text-white text-sm font-medium
+                           px-4 py-2.5 rounded-xl
+                           transition-colors">
+              <svg class="w-4 h-4" fill="none"
+                   viewBox="0 0 24 24"
+                   stroke="currentColor">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M14.752 11.168l-3.197-2.132
+                         A1 1 0 00010 9.87v4.263a1
+                         1 0 001.555.832l3.197-2.132
+                         a1 1 0 000-1.664zM21 12a9 9
+                         0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Démarrer une séance
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-4 gap-4 mb-6">
+
+          <div class="bg-white border border-gray-100
+                      rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-amber-400">⭐</span>
+              <span class="text-sm text-gray-500">
+                Points XP
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">
+              {{ dashboard()!.totalXp }}
+            </p>
+            <p class="text-xs text-green-500 mt-1">
+              Total accumulé
+            </p>
+          </div>
+
+          <div class="bg-white border border-gray-100
+                      rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <span class="text-orange-400">🔥</span>
+              <span class="text-sm text-gray-500">
+                Streak
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">
+              {{ dashboard()!.streakCount }}
+            </p>
+            <p class="text-xs text-orange-500 mt-1">
+              jours consécutifs
+            </p>
+          </div>
+
+          <div class="bg-white border border-gray-100
+                      rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <svg class="w-4 h-4 text-blue-400"
+                   fill="none" viewBox="0 0 24 24"
+                   stroke="currentColor">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14
+                         a2 2 0 002-2V7a2 2 0 00-2-2H5
+                         a2 2 0 00-2 2v12a2 2 0
+                         002 2z"/>
+              </svg>
+              <span class="text-sm text-gray-500">
+                Séances réalisées
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">
+              {{ dashboard()!.totalSessions }}
+            </p>
+            <p class="text-xs text-blue-500 mt-1">
+              Total complétées
+            </p>
+          </div>
+
+          <div class="bg-white border border-gray-100
+                      rounded-2xl p-5">
+            <div class="flex items-center gap-2 mb-3">
+              <svg class="w-4 h-4 text-green-400"
+                   fill="none" viewBox="0 0 24 24"
+                   stroke="currentColor">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0
+                         11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <span class="text-sm text-gray-500">
+                Score moyen
+              </span>
+            </div>
+            <p class="text-3xl font-bold text-gray-900">
+              {{ dashboard()!.averageScore
+                 ? (dashboard()!.averageScore
+                    | number:'1.0-0') : 0 }}%
+            </p>
+            <p class="text-xs text-green-500 mt-1">
+              Conformité moyenne
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Graphique + Activité -->
+       <div class="col-span-2 bg-white border
+            border-gray-100 rounded-2xl p-5">
+  <div class="flex items-center justify-between
+              mb-4">
+    <h3 class="text-sm font-semibold text-gray-900">
+      Progression globale
+    </h3>
+    <span class="text-xs text-gray-400
+                 bg-gray-50 px-3 py-1
+                 rounded-lg">
+      Dernières séances
+    </span>
+  </div>
+
+  @if (dashboard()!.recentSessions.length > 0) {
+    <div style="height: 220px;">
+      <canvas #progressChart></canvas>
+    </div>
+  } @else {
+    <div class="flex flex-col items-center
+                justify-center py-16 text-center">
+      <div class="text-3xl mb-2">📈</div>
+      <p class="text-sm text-gray-500">
+        Aucune séance complétée pour le moment
+      </p>
+      <p class="text-xs text-gray-400 mt-1">
+        Votre progression apparaîtra ici après
+        votre première séance
+      </p>
+    </div>
+  }
+</div>
+
+        <!-- Donut + Plan actif -->
+        <div class="grid grid-cols-3 gap-4">
+
+          <div class="bg-white border border-gray-100
+                      rounded-2xl p-5">
+            <h3 class="text-sm font-semibold
+                       text-gray-900 mb-4">
+              Indicateurs physiques
+            </h3>
+            <div class="flex items-center gap-5">
+              <div class="relative flex-shrink-0"
+                   style="width: 110px; height: 110px;">
+                <canvas #skillsChart></canvas>
+                <div class="absolute inset-0 flex
+                            flex-col items-center
+                            justify-center">
+                  <span class="text-xl font-bold
+                               text-gray-900">
+                    {{ dashboard()!.averageScore
+                       | number:'1.0-0' }}%
+                  </span>
+                  <span class="text-xs text-gray-400">
+                    Score moyen
+                  </span>
+                </div>
+              </div>
+              <div class="flex flex-col gap-2 text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full
+                               bg-blue-500"></span>
+                  <span class="text-gray-500">
+                    Mobilité
+                  </span>
+                  <span class="font-medium
+                               text-gray-800">90%</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full
+                               bg-green-500"></span>
+                  <span class="text-gray-500">
+                    Force
+                  </span>
+                  <span class="font-medium
+                               text-gray-800">80%</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full
+                               bg-amber-500"></span>
+                  <span class="text-gray-500">
+                    Endurance
+                  </span>
+                  <span class="font-medium
+                               text-gray-800">85%</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="w-2 h-2 rounded-full
+                               bg-purple-500"></span>
+                  <span class="text-gray-500">
+                    Précision
+                  </span>
+                  <span class="font-medium
+                               text-gray-800">85%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-span-2 bg-white border
+                      border-gray-100 rounded-2xl p-5">
+            <div class="flex items-center justify-between
+                        mb-3">
+              <h3 class="text-sm font-semibold
+                         text-gray-900">
+                Plan de rééducation actuel
+              </h3>
+            </div>
+
+            @if (dashboard()!.activePlan) {
+              <div class="bg-blue-50 rounded-xl p-4
+                          flex items-center gap-4">
+                <div class="w-10 h-10 bg-white rounded-lg
+                            flex items-center
+                            justify-center flex-shrink-0">
+                  🎯
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold
+                            text-gray-900">
+                    Semaine
+                    {{ dashboard()!.activePlan
+                       .currentWeek }} / 4
+                  </p>
+                  <p class="text-xs text-gray-500">
+                    Fin du plan :
+                    {{ dashboard()!.activePlan.endDate
+                       | date:'dd/MM/yyyy' }}
+                  </p>
+                  <div class="w-full bg-white
+                              rounded-full h-1.5 mt-2">
+                    <div class="bg-blue-600 h-1.5
+                                rounded-full"
+                         [style.width.%]="
+                           dashboard()!.progressionPct">
+                    </div>
+                  </div>
+                </div>
+                <span class="text-sm font-bold
+                             text-blue-600 flex-shrink-0">
+                  {{ dashboard()!.progressionPct }}%
+                </span>
+              </div>
+            } @else {
+              <p class="text-xs text-gray-400 text-center
+                        py-6">
+                Aucun plan actif — contactez votre
+                kinésithérapeute
+              </p>
+            }
+          </div>
+
+        </div>
+
+      </div>
+    }
+
+  </div>
+</div>

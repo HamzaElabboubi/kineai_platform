@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: kineai
+
+  # ── Base de données PostgreSQL ──────────────
+  datasource:
+    url: jdbc:postgresql://localhost:5432/kineai
+    username: postgres
+    password: 2002
+    driver-class-name: org.postgresql.Driver
+
+  # ── JPA / Hibernate ─────────────────────────
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+# ── JWT ─────────────────────────────────────────
+jwt:
+  secret: kineai-secret-key-pfe-2025-minimum-256-bits-required-hamza
+  expiration: 3600000
+  refreshExpiration: 604800000
+
+# ── Swagger UI ──────────────────────────────────
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true        # ← ajouter
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+  packages-to-scan: com.project.kineai  # ← ajouter
+  show-actuator: false
+  use-fqn: false
+
+
+# ── Server ──────────────────────────────────────
+server:
+  port: 8080

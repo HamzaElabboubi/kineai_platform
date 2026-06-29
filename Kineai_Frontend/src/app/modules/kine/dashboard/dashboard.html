@@ -1,0 +1,336 @@
+<div class="min-h-screen bg-gray-50 flex">
+
+  <app-kine-sidebar
+    [pendingCount]="dashboard()?.pendingAlerts ?? 0">
+  </app-kine-sidebar>
+
+  <div class="ml-56 flex-1 px-8 py-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between
+                mb-6">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">
+          Bonjour Dr. {{ firstName }} 👋
+        </h1>
+        <p class="text-sm text-gray-400 mt-1">
+          Gestion des patients et suivi de rééducation
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-full bg-blue-600
+                    text-white text-sm font-bold
+                    flex items-center justify-center">
+          {{ kineName.charAt(0) }}
+        </div>
+        <div>
+          <p class="text-sm font-medium text-gray-900">
+            Dr. {{ kineName }}
+          </p>
+          <p class="text-xs text-gray-400">
+            Kinésithérapeute
+          </p>
+        </div>
+      </div>
+    </div>
+
+    @if (successMsg()) {
+      <div class="flex items-center gap-2 bg-green-50
+                  border border-green-200 rounded-xl
+                  p-3 mb-4 text-sm text-green-700">
+        {{ successMsg() }}
+      </div>
+    }
+    @if (errorMsg()) {
+      <div class="flex items-center gap-2 bg-red-50
+                  border border-red-200 rounded-xl
+                  p-3 mb-4 text-sm text-red-600">
+        {{ errorMsg() }}
+      </div>
+    }
+
+    @if (isLoading()) {
+      <div class="flex justify-center py-16">
+        <svg class="w-5 h-5 animate-spin text-blue-500"
+             fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12"
+                  r="10" stroke="currentColor"
+                  stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0
+                   0 5.373 0 12h4z"/>
+        </svg>
+      </div>
+    }
+    
+
+    @if (!isLoading() && dashboard()) {
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-2 gap-4 mb-6
+                  max-w-2xl">
+
+        <div class="bg-white border border-gray-100
+                    rounded-2xl p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-9 h-9 bg-blue-50 rounded-lg
+                        flex items-center justify-center">
+              <svg class="w-4 h-4 text-blue-500"
+                   fill="none" viewBox="0 0 24 24"
+                   stroke="currentColor">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M17 20h5v-2a3 3 0 00-5.356
+                         -1.857M17 20H7m10 0v-2c0
+                         -.656-.126-1.283-.356-1.857
+                         M7 20H2v-2a3 3 0
+                         015.356-1.857M7 20v-2c0
+                         -.656.126-1.283.356-1.857
+                         m0 0a5.002 5.002 0 019.288
+                         0M15 7a3 3 0 11-6 0 3 3 0
+                         016 0z"/>
+              </svg>
+            </div>
+            <span class="text-sm text-gray-500">
+              Patients suivis
+            </span>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">
+            {{ dashboard()!.totalPatients }}
+          </p>
+        </div>
+
+        <div class="bg-white border border-gray-100
+                    rounded-2xl p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-9 h-9 bg-red-50 rounded-lg
+                        flex items-center justify-center">
+              <svg class="w-4 h-4 text-red-500"
+                   fill="none" viewBox="0 0 24 24"
+                   stroke="currentColor">
+                <path stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 17h5l-1.405-1.405A2.032
+                         2.032 0 0118 14.158V11a6.002
+                         6.002 0 00-4-5.659V5a2 2 0
+                         10-4 0v.341C7.67 6.165 6
+                         8.388 6 11v3.159c0 .538
+                         -.214 1.055-.595 1.436L4
+                         17h5m6 0v1a3 3 0 11-6
+                         0v-1m6 0H9"/>
+              </svg>
+            </div>
+            <span class="text-sm text-gray-500">
+              Alertes en attente
+            </span>
+          </div>
+          <p class="text-3xl font-bold text-gray-900">
+            {{ dashboard()!.pendingAlerts }}
+          </p>
+        </div>
+
+      </div>
+<!-- Graphique répartition des alertes -->
+<div class="bg-white border border-gray-100
+            rounded-2xl p-5 mb-6 max-w-2xl">
+  <h3 class="text-sm font-semibold text-gray-900
+             mb-4">
+    Répartition des alertes
+  </h3>
+
+  @if (dashboard()!.recentAlerts.length > 0) {
+    <div style="height: 220px;">
+      <canvas #alertsChart></canvas>
+    </div>
+  } @else {
+    <p class="text-xs text-gray-400 text-center
+              py-10">
+      Aucune alerte à afficher pour le moment
+    </p>
+  }
+</div>
+     <div class="divide-y divide-gray-50">
+  @for (patient of filteredPatients;
+        track patient.id) {
+    <div class="px-5 py-4 flex items-center
+                gap-4 hover:bg-gray-50/50
+                transition-colors cursor-pointer
+                group">
+
+      <!-- Avatar -->
+      <div class="w-10 h-10 rounded-full
+                  bg-gradient-to-br
+                  from-blue-400 to-indigo-600
+                  flex items-center
+                  justify-center text-sm
+                  font-semibold text-white
+                  flex-shrink-0">
+        {{ patient.fullName.charAt(0)
+           .toUpperCase() }}{{ patient.fullName
+           .split(' ')[1]?.charAt(0)
+           ?.toUpperCase() }}
+      </div>
+
+      <!-- Nom + pathologie -->
+      <div class="w-44 flex-shrink-0">
+        <p class="text-sm font-semibold
+                  text-gray-900 truncate">
+          {{ patient.fullName }}
+        </p>
+        <p class="text-xs text-gray-400 truncate
+                  mt-0.5">
+          {{ getPathologyLabel(
+             patient.pathology) }}
+        </p>
+      </div>
+
+      <!-- Badge niveau -->
+      <span class="text-xs px-2.5 py-1
+                   rounded-full font-medium
+                   flex-shrink-0 w-28 text-center
+                   {{ getLevelColor(
+                      patient.level) }}">
+        {{ getLevelLabel(patient.level) }}
+      </span>
+
+      <!-- Streak -->
+      <div class="flex items-center gap-1
+                  flex-shrink-0 w-16">
+        <span class="text-amber-400 text-sm">
+          🔥
+        </span>
+        <span class="text-sm font-semibold
+                     text-gray-700">
+          {{ patient.streakCount }}
+        </span>
+      </div>
+
+      <!-- Espace flexible -->
+      <div class="flex-1"></div>
+
+      <!-- XP -->
+      <div class="text-right flex-shrink-0
+                  w-24">
+        <p class="text-xs text-gray-400">
+          XP total
+        </p>
+        <p class="text-sm font-semibold
+                  text-amber-600 mt-0.5">
+          {{ patient.totalXp }}
+        </p>
+      </div>
+
+      <!-- Chevron -->
+      <svg class="w-4 h-4 text-gray-300
+                  flex-shrink-0 transition-transform
+                  group-hover:translate-x-0.5
+                  group-hover:text-blue-400"
+           fill="none" viewBox="0 0 24 24"
+           stroke="currentColor">
+        <path stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M9 5l7 7-7 7"/>
+      </svg>
+
+    </div>
+  }
+</div>
+
+      <!-- Alertes récentes -->
+      <div class="bg-white border border-gray-100
+                  rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-gray-100
+                    flex items-center justify-between">
+          <h3 class="text-sm font-semibold
+                     text-gray-900">
+            Alertes récentes
+          </h3>
+          <a routerLink="/kine/alerts"
+             class="text-xs text-blue-600
+                    hover:underline">
+            Voir toutes les alertes →
+          </a>
+        </div>
+
+        @if (dashboard()!.recentAlerts.length === 0) {
+          <p class="text-xs text-gray-400 text-center
+                    py-10">
+            Aucune alerte récente
+          </p>
+        }
+
+        <div class="divide-y divide-gray-50">
+          @for (alert of dashboard()!.recentAlerts;
+                track alert.id) {
+            <div class="px-5 py-3.5 flex items-center
+                        gap-4">
+              <span class="text-lg flex-shrink-0">
+                {{ getAlertIcon(alert.type) }}
+              </span>
+
+              <div class="flex-1">
+                <div class="flex items-center gap-2
+                            mb-0.5">
+                  <span class="text-sm font-medium
+                               text-gray-900">
+                    {{ getAlertLabel(
+                       alert.type) }}
+                  </span>
+                  @if (alert.resolved) {
+                    <span class="text-xs bg-green-50
+                                 text-green-600 px-2
+                                 py-0.5 rounded-full">
+                      Résolue
+                    </span>
+                  } @else {
+                    <span class="text-xs bg-red-50
+                                 text-red-600 px-2
+                                 py-0.5 rounded-full">
+                      Non résolue
+                    </span>
+                  }
+                </div>
+                <p class="text-xs text-gray-400">
+                  {{ alert.message }}
+                </p>
+              </div>
+
+              <span class="text-xs text-gray-400
+                           flex-shrink-0">
+                {{ alert.sentAt
+                   | date:'dd/MM/yyyy - HH:mm' }}
+              </span>
+
+              @if (!alert.resolved) {
+                <button
+                  (click)="resolveAlert(alert.id)"
+                  class="text-xs font-medium
+                         text-blue-600 border
+                         border-blue-200 px-3 py-1.5
+                         rounded-lg hover:bg-blue-50
+                         transition-colors flex-shrink-0">
+                  Résoudre
+                </button>
+              } @else {
+                <button disabled
+                        class="text-xs font-medium
+                               text-gray-300 border
+                               border-gray-200 px-3
+                               py-1.5 rounded-lg
+                               flex-shrink-0
+                               cursor-not-allowed">
+                  Résolue
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+    }
+
+  </div>
+</div>
