@@ -128,8 +128,8 @@ export class SessionComponent
     'LEFT_EAR': 7,        'RIGHT_EAR': 8
   };
 
-  // ✅ Nouveau — noms français des articulations
-  // pour les messages de feedback précis
+  // ✅ Noms français des articulations pour les
+  // messages de feedback précis
   private readonly JOINT_NAMES_FR:
     Record<number, string> = {
     11: 'épaule gauche',   12: 'épaule droite',
@@ -139,6 +139,70 @@ export class SessionComponent
     25: 'genou gauche',    26: 'genou droit',
     27: 'cheville gauche', 28: 'cheville droite'
   };
+
+  // ══════════════════════════════════════════
+  // ✅ NOUVEAU — BANQUE DE MESSAGES DE FEEDBACK
+  // Plusieurs formulations par catégorie pour
+  // éviter la répétition mécanique du même texte
+  // ══════════════════════════════════════════
+  private readonly MESSAGES = {
+    tropLoin: [
+      'Vous avez dépassé l\'angle recommandé,'
+        + ' revenez légèrement',
+      'Amplitude excessive — revenez doucement'
+        + ' à la position de départ',
+      'Trop loin — relâchez un peu'
+    ],
+    pasAssezLoin: [
+      'Augmentez l\'angle du mouvement',
+      'Allez un peu plus loin',
+      'Continuez le mouvement jusqu\'au repère'
+    ],
+    conforme: [
+      'Angle correct, continuez',
+      'Très bien, maintenez cette position',
+      'Excellent, c\'est la bonne position'
+    ],
+    proche: [
+      'Presque... continuez',
+      'Vous y êtes presque',
+      'Continuez, vous approchez'
+    ],
+    tropRapide: [
+      'Le mouvement est trop rapide,'
+        + ' ralentissez',
+      'Effectuez le mouvement plus lentement',
+      'Contrôlez votre mouvement, ne vous'
+        + ' précipitez pas'
+    ],
+    maintienReussi: [
+      'Excellent maintien !',
+      'Parfait, relâchez doucement'
+    ],
+    repetition: [
+      'Répétition réussie',
+      'Bien joué, continuez'
+    ]
+  };
+
+  // Évite de répéter EXACTEMENT le même message
+  // que la fois précédente dans la même catégorie
+  private lastMessageByCategory:
+    Record<string, string> = {};
+
+  private pickMessage(
+    category: keyof typeof this.MESSAGES
+  ): string {
+    const options = this.MESSAGES[category];
+    const last = this.lastMessageByCategory[category];
+    const available = options.filter(m => m !== last);
+    const pool = available.length > 0
+      ? available : options;
+    const chosen = pool[
+      Math.floor(Math.random() * pool.length)];
+    this.lastMessageByCategory[category] = chosen;
+    return chosen;
+  }
 
   // ══════════════════════════════════════════
   // PRIVÉ
@@ -165,12 +229,22 @@ export class SessionComponent
   private lastAngle = 0;
   private readonly HISTORY_SIZE = 5;
 
+  // ✅ NOUVEAU — Détection de vitesse de mouvement
+  // (mouvement trop brusque entre deux frames)
+  private lastFrameTime = 0;
+  private readonly MAX_ANGLE_SPEED = 15; // °/100ms
+
+  // ✅ NOUVEAU — Détection de maintien en zone cible
+  private holdStartTime = 0;
+  private readonly HOLD_TARGET_MS = 2000; // 2 secondes
+  private holdAnnounced = false;
+
   // ── Speech ────────────────────────────────
   private readonly speech = window.speechSynthesis;
   private lastSpokenMsg = '';
   private lastSpeakTime = 0;
   private lastVisibilityWarning = 0;
-  private startDirectionSpoken = false;   // ✅ Nouveau
+  private startDirectionSpoken = false;
 
   protected readonly Math = Math;
 
@@ -205,8 +279,8 @@ private loadCurrentLevel(): void {
       Math.round((this.repsCompleted() / target) * 100));
   }
 
-  // ✅ Nouveau — niveau de feedback pour colorer
-  // le badge à l'écran (vert / jaune / rouge)
+  // ✅ Niveau de feedback pour colorer le badge à
+  // l'écran (vert / jaune / rouge)
   get feedbackLevel(): 'good' | 'close' | 'far' {
     if (this.isConformant()) return 'good';
     const msg = this.feedback();
@@ -507,9 +581,6 @@ private loadCurrentLevel(): void {
   // ══════════════════════════════════════════
   // IDENTIFICATION PARTIE DU CORPS MANQUANTE
   // ══════════════════════════════════════════
-  // Permet de dire au patient PRÉCISÉMENT quelle
-  // articulation n'est plus visible, plutôt qu'un
-  // message générique "replacez-vous"
   private getMissingBodyPart(
     landmarks: any[],
     jointIndices: number[]
@@ -542,8 +613,6 @@ private loadCurrentLevel(): void {
     const ex = this.selectedEx();
     if (!ex) return;
 
-    // Vérifier la configuration articulaire
-    // avant tout traitement
     const indices = this.getJointIndices();
     if (!indices) {
       this.feedback.set(
@@ -554,8 +623,6 @@ private loadCurrentLevel(): void {
     this.drawSkeleton(
       ctx, results.poseLandmarks, canvas, indices);
 
-    // Phase calibration — vérifie juste la visibilité
-    // du corps, pas un angle précis
     if (this.phase() === 'CALIBRATION') {
       const bodyVisible = this.checkBodyVisibility(
         results.poseLandmarks);
@@ -564,18 +631,12 @@ private loadCurrentLevel(): void {
       return;
     }
 
-    // Phase séance — angle précis requis, calculé
-    // sur l'articulation propre à CET exercice
     if (this.phase() === 'SESSION') {
 
-      // Vérification — l'articulation cible doit
-      // être réellement visible, pas juste une
-      // position devinée par MediaPipe
       const jointsVisible = this.areTrackedJointsVisible(
         results.poseLandmarks, indices);
 
       if (!jointsVisible) {
-        // ✅ Identifie précisément la partie manquante
         const missingPart = this.getMissingBodyPart(
           results.poseLandmarks, indices);
 
@@ -585,14 +646,11 @@ private loadCurrentLevel(): void {
         this.isConformant.set(false);
         this.drawFeedback(ctx, canvas, false);
 
-        // Reset de la machine à états — empêche
-        // un faux positif si le patient cache puis
-        // remontre l'articulation en plein mouvement
         this.repPhase = 'NEUTRAL';
         this.angleHistory = [];
+        this.holdStartTime = 0;
+        this.holdAnnounced = false;
 
-        // Alerte vocale anti-spam — un seul rappel
-        // toutes les 4 secondes
         const now = Date.now();
         if (now - this.lastVisibilityWarning > 4000) {
           this.speak(
@@ -600,8 +658,7 @@ private loadCurrentLevel(): void {
           this.lastVisibilityWarning = now;
         }
 
-        return; // Pas de calcul d'angle, pas de
-                // comptage de répétition
+        return;
       }
 
       const angle = this.calculateAngle(
@@ -703,9 +760,6 @@ private loadCurrentLevel(): void {
     });
 
     // Articulation cible — DYNAMIQUE selon l'exercice
-    // jointIndices[1] = le sommet de l'angle mesuré
-    // (genou pour exercice genou, épaule pour exercice
-    // épaule, etc.)
     const targetIdx = jointIndices[1];
     const target = landmarks[targetIdx];
 
@@ -820,7 +874,7 @@ private loadCurrentLevel(): void {
   }
 
   // ══════════════════════════════════════════
-  // SÉANCE ACTIVE
+  // SÉANCE ACTIVE — ✅ ENRICHIE
   // ══════════════════════════════════════════
   private handleSession(
     angle: number,
@@ -840,36 +894,106 @@ private loadCurrentLevel(): void {
       / this.allScores.length;
     this.conformityPct.set(Math.round(avg));
 
+    // ── ✅ Détection de vitesse de mouvement ───
+    // Repère un mouvement trop brusque entre deux
+    // frames successives, sans casser le calcul
+    // de répétition existant
+    const now = Date.now();
+    let movingTooFast = false;
+    if (this.lastFrameTime > 0) {
+      const deltaTime = now - this.lastFrameTime;
+      const deltaAngle = Math.abs(
+        angle - this.lastAngle);
+      if (deltaTime > 0 && deltaTime < 200) {
+        const speed = (deltaAngle / deltaTime) * 100;
+        movingTooFast = speed > this.MAX_ANGLE_SPEED;
+      }
+    }
+    this.lastFrameTime = now;
+
     const repDone = this.detectRepetition(
       angle, ex.targetAngle, ex.toleranceDeg);
 
     if (repDone) {
       const newReps = this.repsCompleted() + 1;
       this.repsCompleted.set(newReps);
-      this.speak(`Répétition ${newReps}`);
+
+      // ✅ Messages de répétition enrichis —
+      // compte à rebours et variété au lieu de
+      // toujours "Répétition X"
+      const remaining = (ex.repsTarget ?? 10)
+        - newReps;
+      if (remaining <= 0) {
+        this.speak(this.pickMessage('repetition'));
+      } else if (remaining === 1) {
+        this.speak('Dernière répétition');
+      } else if (remaining % 5 === 0) {
+        this.speak(
+          `Plus que ${remaining} répétitions`);
+      } else {
+        this.speak(this.pickMessage('repetition'));
+      }
+
       if (navigator.vibrate) {
         navigator.vibrate(50);
       }
-      // ✅ Réinitialise pour permettre un nouveau
-      // rappel de direction au prochain cycle
       this.startDirectionSpoken = false;
+      this.holdStartTime = 0;
+      this.holdAnnounced = false;
     }
 
-    // ✅ Feedback à 3 paliers — vert / jaune / rouge
-    // au lieu de juste conforme/non conforme
-    if (conformant) {
-      this.feedback.set('✅ Parfait, maintenez !');
-    } else if (diff <= ex.toleranceDeg * 1.5) {
-      this.feedback.set('🟡 Presque... continuez');
+    // ── ✅ Choix du message — priorité du plus
+    // urgent (sécurité) au moins urgent ────────
+    if (movingTooFast) {
+      this.feedback.set(
+        '⚠️ ' + this.pickMessage('tropRapide'));
+
+    } else if (conformant) {
+      // ✅ Détection de maintien en zone cible —
+      // encourage le patient à tenir la position
+      // plutôt que de juste passer vite au travers
+      if (this.holdStartTime === 0) {
+        this.holdStartTime = now;
+      }
+      const heldFor = now - this.holdStartTime;
+
+      if (heldFor >= this.HOLD_TARGET_MS
+          && !this.holdAnnounced) {
+        const msg = this.pickMessage('maintienReussi');
+        this.feedback.set('✅ ' + msg);
+        this.speak(msg);
+        this.holdAnnounced = true;
+      } else {
+        this.feedback.set(
+          '✅ ' + this.pickMessage('conforme'));
+      }
+
     } else {
-      const direction = angle < ex.targetAngle
-        ? '⬆️ Pliez davantage'
-        : '⬇️ Redressez légèrement';
-      this.feedback.set(direction);
+      this.holdStartTime = 0;
+      this.holdAnnounced = false;
+
+      if (diff <= ex.toleranceDeg * 1.5) {
+        this.feedback.set(
+          '🟡 ' + this.pickMessage('proche'));
+      } else {
+        // ✅ Distinction réelle dépassement vs
+        // pas-assez-loin, basée sur la phase du
+        // mouvement en cours (descente/montée)
+        const isOvershoot = this.isAngleOvershoot(
+          angle, ex.targetAngle, ex.toleranceDeg);
+
+        if (isOvershoot) {
+          this.feedback.set(
+            '↩️ ' + this.pickMessage('tropLoin'));
+        } else {
+          const prefix = angle < ex.targetAngle
+            ? '⬆️ ' : '⬇️ ';
+          this.feedback.set(
+            prefix + this.pickMessage('pasAssezLoin'));
+        }
+      }
     }
 
-    // ✅ Direction explicite une seule fois au
-    // démarrage de chaque nouveau cycle de mouvement
     if (this.repPhase === 'NEUTRAL'
         && !this.startDirectionSpoken) {
       this.speak('Pliez doucement jusqu\'au repère');
@@ -895,6 +1019,31 @@ private loadCurrentLevel(): void {
         'Objectif atteint ! Excellent travail !');
       setTimeout(() => this.completeSession(), 2500);
     }
+  }
+
+  // ══════════════════════════════════════════
+  // ✅ NOUVEAU — DÉTECTION DE DÉPASSEMENT
+  // ══════════════════════════════════════════
+  // Distingue un vrai dépassement (le patient est
+  // allé au-delà de la zone tolérée DANS LE SENS
+  // du mouvement en cours) d'un simple "pas encore
+  // arrivé" de l'autre côté de la zone cible.
+  private isAngleOvershoot(
+    angle: number,
+    targetAngle: number,
+    toleranceDeg: number
+  ): boolean {
+    const lowerBound = targetAngle - toleranceDeg;
+    const upperBound = targetAngle + toleranceDeg;
+
+    if (this.repPhase === 'GOING_DOWN'
+        || this.repPhase === 'AT_BOTTOM') {
+      return angle < lowerBound;
+    }
+    if (this.repPhase === 'GOING_UP') {
+      return angle > upperBound;
+    }
+    return false;
   }
 
   // ══════════════════════════════════════════
