@@ -18,10 +18,37 @@ jobs:
   # JOB 1 — Tests unitaires Backend
   # Exécute la suite complète des 80 tests
   # unitaires JUnit/Mockito avec rapport JaCoCo
+  # PostgreSQL et Redis démarrés comme services
+  # pour permettre le contextLoads()
   # ──────────────────────────────────────────
   backend-tests:
     name: Tests unitaires Spring Boot
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: kineai
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: 2002
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
       - name: Checkout du code source
