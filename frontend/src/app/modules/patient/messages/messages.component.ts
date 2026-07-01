@@ -50,7 +50,7 @@ export class MessagesComponent implements OnInit {
   this.isLoading.set(true);
   this.errorMsg.set('');
 
-  this.alertService.getAllMyAlerts().subscribe({
+  this.alertService.getMyAlertsAsPatient().subscribe({
     next: (alerts: AlertResponse[]) => {
       this.allAlerts.set(alerts);
       this.isLoading.set(false);

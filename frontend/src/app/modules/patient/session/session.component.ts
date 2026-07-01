@@ -1,9 +1,12 @@
 import {
   Component, inject, OnInit, OnDestroy,
-  signal, ViewChild, ElementRef, NgZone
+  signal, ViewChild, ElementRef, NgZone,
+  ChangeDetectionStrategy, HostListener
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil, retry } from 'rxjs/operators';
 import { ExerciseService }
   from '../../../core/services/exercise.service';
 import { SessionService }
@@ -18,7 +21,8 @@ import {
 } from '../../../core/models/session.model';
 import { PatientSidebarComponent }
   from '../../../shared/components/patient-sidebar/patient-sidebar.component';
-import { RehabPlanService } from '../../../core/services/rehab-plan.service';
+import { RehabPlanService }
+  from '../../../core/services/rehab-plan.service';
 
 type SessionPhase =
   'SELECT'       |
@@ -33,7 +37,8 @@ type SessionPhase =
   standalone: true,
   imports: [CommonModule, PatientSidebarComponent],
   templateUrl: './session.component.html',
-  styleUrl: './session.component.scss'
+  styleUrl: './session.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SessionComponent
   implements OnInit, OnDestroy {
@@ -50,7 +55,10 @@ export class SessionComponent
   private router          = inject(Router);
   private ngZone          = inject(NgZone);
   private rehabPlanService = inject(RehabPlanService);
-  private patientService = inject(PatientService);
+  private patientService  = inject(PatientService);
+
+  // ✅ Subject de destruction — désabonnement global
+  private destroy$ = new Subject<void>();
 
   // ══════════════════════════════════════════
   // SIGNAUX ÉTAT
@@ -69,14 +77,22 @@ export class SessionComponent
   repsCompleted  = signal<number>(0);
   calibCountdown = signal<number>(2);
   sessionTime    = signal<number>(0);
-  feedback       = signal<string>(
-    'Positionnez-vous face à la caméra');
+
+  // ✅ Message visuel STABLE — ne change que sur
+  // événement réel, jamais à chaque frame
+  feedback       = signal<string>('');
   errorMsg       = signal<string>('');
   voiceEnabled   = signal<boolean>(true);
 
+  // ✅ Signal réactif pour le niveau patient
+  patientLevelSignal = signal<string>('Inconnu');
+
   // ── Animations ────────────────────────────
-  badgeUnlocked = signal<string | null>(null);
-  xpGained      = signal<number>(0);
+  badgeUnlocked  = signal<string | null>(null);
+  xpGained       = signal<number>(0);
+
+  // ✅ États de chargement scripts
+  loadingScripts = signal<boolean>(false);
 
   // ══════════════════════════════════════════
   // ÉTAPES INSTRUCTIONS
@@ -86,9 +102,9 @@ export class SessionComponent
       icon: '📏',
       title: 'Positionnez-vous correctement',
       desc:
-        'Placez-vous à environ 1,5 mètre de la caméra.'
-        + ' Votre corps entier doit être visible à'
-        + ' l\'écran, des pieds jusqu\'à la tête.'
+        'Placez-vous à environ 1,5 mètre de la'
+        + ' caméra. Votre corps entier doit être'
+        + ' visible à l\'écran.'
     },
     {
       icon: '💡',
@@ -101,8 +117,9 @@ export class SessionComponent
       icon: '👕',
       title: 'Portez une tenue adaptée',
       desc:
-        'Des vêtements ajustés permettent à la caméra'
-        + ' de mieux détecter vos articulations.'
+        'Des vêtements ajustés permettent à la'
+        + ' caméra de mieux détecter vos'
+        + ' articulations.'
     },
     {
       icon: '📝',
@@ -128,8 +145,6 @@ export class SessionComponent
     'LEFT_EAR': 7,        'RIGHT_EAR': 8
   };
 
-  // ✅ Noms français des articulations pour les
-  // messages de feedback précis
   private readonly JOINT_NAMES_FR:
     Record<number, string> = {
     11: 'épaule gauche',   12: 'épaule droite',
@@ -139,70 +154,6 @@ export class SessionComponent
     25: 'genou gauche',    26: 'genou droit',
     27: 'cheville gauche', 28: 'cheville droite'
   };
-
-  // ══════════════════════════════════════════
-  // ✅ NOUVEAU — BANQUE DE MESSAGES DE FEEDBACK
-  // Plusieurs formulations par catégorie pour
-  // éviter la répétition mécanique du même texte
-  // ══════════════════════════════════════════
-  private readonly MESSAGES = {
-    tropLoin: [
-      'Vous avez dépassé l\'angle recommandé,'
-        + ' revenez légèrement',
-      'Amplitude excessive — revenez doucement'
-        + ' à la position de départ',
-      'Trop loin — relâchez un peu'
-    ],
-    pasAssezLoin: [
-      'Augmentez l\'angle du mouvement',
-      'Allez un peu plus loin',
-      'Continuez le mouvement jusqu\'au repère'
-    ],
-    conforme: [
-      'Angle correct, continuez',
-      'Très bien, maintenez cette position',
-      'Excellent, c\'est la bonne position'
-    ],
-    proche: [
-      'Presque... continuez',
-      'Vous y êtes presque',
-      'Continuez, vous approchez'
-    ],
-    tropRapide: [
-      'Le mouvement est trop rapide,'
-        + ' ralentissez',
-      'Effectuez le mouvement plus lentement',
-      'Contrôlez votre mouvement, ne vous'
-        + ' précipitez pas'
-    ],
-    maintienReussi: [
-      'Excellent maintien !',
-      'Parfait, relâchez doucement'
-    ],
-    repetition: [
-      'Répétition réussie',
-      'Bien joué, continuez'
-    ]
-  };
-
-  // Évite de répéter EXACTEMENT le même message
-  // que la fois précédente dans la même catégorie
-  private lastMessageByCategory:
-    Record<string, string> = {};
-
-  private pickMessage(
-    category: keyof typeof this.MESSAGES
-  ): string {
-    const options = this.MESSAGES[category];
-    const last = this.lastMessageByCategory[category];
-    const available = options.filter(m => m !== last);
-    const pool = available.length > 0
-      ? available : options;
-    const chosen = pool[
-      Math.floor(Math.random() * pool.length)];
-    this.lastMessageByCategory[category] = chosen;
-    return chosen;
-  }
 
   // ══════════════════════════════════════════
   // PRIVÉ
@@ -229,63 +180,72 @@ export class SessionComponent
   private lastAngle = 0;
   private readonly HISTORY_SIZE = 5;
 
-  // ✅ NOUVEAU — Détection de vitesse de mouvement
-  // (mouvement trop brusque entre deux frames)
+  // ── Détection vitesse ─────────────────────
   private lastFrameTime = 0;
-  private readonly MAX_ANGLE_SPEED = 15; // °/100ms
 
-  // ✅ NOUVEAU — Détection de maintien en zone cible
+  // ── Maintien ──────────────────────────────
   private holdStartTime = 0;
-  private readonly HOLD_TARGET_MS = 2000; // 2 secondes
   private holdAnnounced = false;
 
   // ── Speech ────────────────────────────────
-  private readonly speech = window.speechSynthesis;
+  // ✅ Guard speechSynthesis multi-navigateur
+  private readonly speech =
+    typeof window !== 'undefined'
+    && 'speechSynthesis' in window
+      ? window.speechSynthesis : null;
   private lastSpokenMsg = '';
   private lastSpeakTime = 0;
   private lastVisibilityWarning = 0;
-  private startDirectionSpoken = false;
+
+  // ✅ Métriques précédentes — évite envois inutiles
+  private lastSentConformityPct = -1;
+  private lastSentReps = -1;
 
   protected readonly Math = Math;
 
-
-  private currentPatientLevel: string | null = null;
-
-private loadCurrentLevel(): void {
-  this.patientService.getMyProfile().subscribe({
-    next: (profile) => {
-      this.currentPatientLevel = profile.level;
-    },
-    error: (err: { message?: string }) => {
-      console.error(
-        'Impossible de charger le niveau du patient :',
-        err.message || err);
+  // ══════════════════════════════════════════
+  // ✅ beforeunload — interrompt la session si
+  // l'onglet est fermé en pleine séance
+  // ══════════════════════════════════════════
+  @HostListener('window:beforeunload', ['$event'])
+  onBeforeUnload(event: BeforeUnloadEvent): void {
+    const session = this.currentSession();
+    if (session && (
+      this.phase() === 'SESSION' ||
+      this.phase() === 'CALIBRATION'
+    )) {
+      this.sessionService
+        .interrupt(session.id)
+        .subscribe();
+      event.preventDefault();
+      event.returnValue =
+        'Une séance est en cours.'
+        + ' Êtes-vous sûr de vouloir quitter ?';
     }
-  });
-}
+  }
+
   // ══════════════════════════════════════════
   // GETTERS
   // ══════════════════════════════════════════
   get patientName(): string {
     return this.authService.getFullName() || 'Patient';
   }
+
   get patientLevel(): string {
-  return this.currentPatientLevel  || 'Inconnu'; ;
-}
+    return this.patientLevelSignal();
+  }
 
   get progressPct(): number {
     const target = this.selectedEx()?.repsTarget ?? 10;
     return Math.min(100,
-      Math.round((this.repsCompleted() / target) * 100));
+      Math.round(
+        (this.repsCompleted() / target) * 100));
   }
 
-  // ✅ Niveau de feedback pour colorer le badge à
-  // l'écran (vert / jaune / rouge)
-  get feedbackLevel(): 'good' | 'close' | 'far' {
-    if (this.isConformant()) return 'good';
-    const msg = this.feedback();
-    if (msg.includes('🟡')) return 'close';
-    return 'far';
+  // ✅ feedbackLevel basé uniquement sur isConformant
+  // — plus de lecture du texte feedback qui change
+  get feedbackLevel(): 'good' | 'far' {
+    return this.isConformant() ? 'good' : 'far';
   }
 
   // ══════════════════════════════════════════
@@ -298,6 +258,8 @@ private loadCurrentLevel(): void {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     this.stopAll();
   }
 
@@ -305,22 +267,23 @@ private loadCurrentLevel(): void {
   // EXERCICES
   // ══════════════════════════════════════════
   loadExercises(): void {
-    this.exerciseService.getMyExercises().subscribe({
-      next: (exs: ExerciseResponse[]) => {
-        this.exercises.set(exs);
-        if (exs.length === 0) {
+    this.exerciseService.getMyExercises()
+      .pipe(takeUntil(this.destroy$), retry(2))
+      .subscribe({
+        next: (exs: ExerciseResponse[]) => {
+          this.exercises.set(exs);
+          if (exs.length === 0) {
+            this.errorMsg.set(
+              'Aucun exercice disponible.'
+              + ' Contactez votre kinésithérapeute.');
+          }
+        },
+        error: (err: { message?: string }) => {
           this.errorMsg.set(
-            'Aucun exercice disponible pour le moment.'
-            + ' Contactez votre kinésithérapeute.');
+            err.message
+            || 'Impossible de charger vos exercices.');
         }
-      },
-      error: (err: { message?: string }) => {
-        this.errorMsg.set(
-          err.message
-          || 'Impossible de charger vos exercices.'
-             + ' Contactez votre kinésithérapeute.');
-      }
-    });
+      });
   }
 
   selectExercise(ex: ExerciseResponse): void {
@@ -380,6 +343,8 @@ private loadCurrentLevel(): void {
       this.currentStep.update(s => s + 1);
     } else {
       this.phase.set('CALIBRATION');
+      this.feedback.set(
+        'Placez votre corps dans le cadre');
       this.initMediaPipe();
     }
   }
@@ -391,10 +356,26 @@ private loadCurrentLevel(): void {
   }
 
   private loadActivePlanId(): void {
-    this.rehabPlanService.getMyActivePlan().subscribe({
-      next: (plan) => this.activePlanId.set(plan.id),
-      error: () => this.activePlanId.set(null)
-    });
+    this.rehabPlanService.getMyActivePlan()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (plan) =>
+          this.activePlanId.set(plan.id),
+        error: () =>
+          this.activePlanId.set(null)
+      });
+  }
+
+  private loadCurrentLevel(): void {
+    this.patientService.getMyProfile()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (profile) => {
+          this.patientLevelSignal.set(
+            profile.level || 'Inconnu');
+        },
+        error: () => {}
+      });
   }
 
   // ══════════════════════════════════════════
@@ -404,17 +385,25 @@ private loadCurrentLevel(): void {
     const ex = this.selectedEx();
     if (!ex) return;
 
+    if (!this.isValidExerciseData(ex)) {
+      this.errorMsg.set(
+        'Données d\'exercice invalides.'
+        + ' Contactez l\'administrateur.');
+      return;
+    }
+
     if (!this.isValidJointConfig(ex)) {
       this.errorMsg.set(
-        'Cet exercice n\'a pas de configuration'
-        + ' MediaPipe valide. Contactez l\'administrateur.');
+        'Configuration MediaPipe invalide.');
       return;
     }
 
     this.sessionService.start({
       exerciseId: ex.id,
       planId: this.activePlanId()
-    }).subscribe({
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
       next: (session: SessionResponse) => {
         this.currentSession.set(session);
         this.currentStep.set(0);
@@ -427,12 +416,31 @@ private loadCurrentLevel(): void {
     });
   }
 
+  // ✅ Validation données exercice — protège NaN
+  private isValidExerciseData(
+    ex: ExerciseResponse
+  ): boolean {
+    const angle = ex.targetAngle;
+    const tol   = ex.toleranceDeg;
+    if (angle === undefined || angle === null
+        || isNaN(angle)
+        || angle < 0 || angle > 180) return false;
+    if (tol === undefined || tol === null
+        || isNaN(tol)
+        || tol <= 0 || tol > 45) return false;
+    if (!ex.repsTarget || ex.repsTarget <= 0)
+      return false;
+    return true;
+  }
+
   getToleranceLabel(
     toleranceDeg: number | undefined
   ): string {
     if (!toleranceDeg) return 'Précision modérée';
-    if (toleranceDeg >= 15) return 'Mouvement souple accepté';
-    if (toleranceDeg >= 8) return 'Précision modérée requise';
+    if (toleranceDeg >= 15)
+      return 'Mouvement souple accepté';
+    if (toleranceDeg >= 8)
+      return 'Précision modérée requise';
     return 'Mouvement précis demandé';
   }
 
@@ -444,7 +452,7 @@ private loadCurrentLevel(): void {
       .split(',').map(j => j.trim());
     if (names.length !== 3) return false;
     return names.every(
-      name => this.LANDMARK_INDEX[name] !== undefined);
+      n => this.LANDMARK_INDEX[n] !== undefined);
   }
 
   // ══════════════════════════════════════════
@@ -452,24 +460,47 @@ private loadCurrentLevel(): void {
   // ══════════════════════════════════════════
   private async initMediaPipe(): Promise<void> {
     try {
+      this.loadingScripts.set(true);
       await this.loadMediaPipeScripts();
+      this.loadingScripts.set(false);
       await this.setupCamera();
       this.setupPose();
-    } catch {
-      this.errorMsg.set(
-        'Impossible d\'accéder à la webcam.'
-        + ' Vérifiez les permissions dans votre'
-        + ' navigateur.');
+    } catch (err: any) {
+      this.loadingScripts.set(false);
+
+      if (err?.name === 'NotAllowedError') {
+        this.errorMsg.set(
+          'Accès à la caméra refusé.'
+          + ' Autorisez l\'accès dans votre'
+          + ' navigateur.');
+      } else if (err?.name === 'NotFoundError') {
+        this.errorMsg.set(
+          'Aucune caméra détectée.');
+      } else if (
+          err?.message?.includes('timeout')) {
+        this.errorMsg.set(
+          'Chargement MediaPipe trop lent.'
+          + ' Vérifiez votre connexion.');
+      } else {
+        this.errorMsg.set(
+          'Impossible d\'accéder à la webcam.');
+      }
       this.phase.set('ERROR');
     }
   }
 
+  // ✅ Timeout 10s sur le chargement des scripts
   private loadMediaPipeScripts(): Promise<void> {
     return new Promise((resolve, reject) => {
       if (this.scriptLoaded) {
         resolve();
         return;
       }
+
+      const timeoutId = setTimeout(() => {
+        reject(new Error('timeout'));
+      }, 10000);
+
       const pose = document.createElement('script');
       pose.src =
         'https://cdn.jsdelivr.net/npm/'
@@ -485,14 +516,19 @@ private loadCurrentLevel(): void {
       pose.onload = () => {
         document.body.appendChild(cam);
         cam.onload = () => {
+          clearTimeout(timeoutId);
           this.scriptLoaded = true;
           resolve();
         };
-        cam.onerror = () =>
+        cam.onerror = () => {
+          clearTimeout(timeoutId);
           reject(new Error('Camera utils failed'));
+        };
       };
-      pose.onerror = () =>
+      pose.onerror = () => {
+        clearTimeout(timeoutId);
         reject(new Error('Pose script failed'));
+      };
       document.body.appendChild(pose);
     });
   }
@@ -550,21 +586,12 @@ private loadCurrentLevel(): void {
   // ══════════════════════════════════════════
   // MAPPING ARTICULATION DYNAMIQUE
   // ══════════════════════════════════════════
-
-  /**
-   * Retourne les 3 indices de landmarks MediaPipe
-   * correspondant à l'exercice sélectionné.
-   * Format mediapipeJoints : "PointA,Sommet,PointC"
-   * Le point central (index 1) est l'articulation
-   * dont l'angle est mesuré et affiché à l'écran.
-   */
   private getJointIndices(): number[] | null {
     const ex = this.selectedEx();
     if (!ex?.mediapipeJoints) return null;
 
     const jointNames = ex.mediapipeJoints
-      .split(',')
-      .map(j => j.trim());
+      .split(',').map(j => j.trim());
 
     if (jointNames.length !== 3) return null;
 
@@ -574,13 +601,9 @@ private loadCurrentLevel(): void {
     if (indices.some(idx => idx === undefined)) {
       return null;
     }
-
     return indices;
   }
 
-  // ══════════════════════════════════════════
-  // IDENTIFICATION PARTIE DU CORPS MANQUANTE
-  // ══════════════════════════════════════════
   private getMissingBodyPart(
     landmarks: any[],
     jointIndices: number[]
@@ -605,7 +628,8 @@ private loadCurrentLevel(): void {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(
+      0, 0, canvas.width, canvas.height);
     ctx.drawImage(
       results.image, 0, 0,
       canvas.width, canvas.height);
@@ -614,35 +638,37 @@ private loadCurrentLevel(): void {
     if (!ex) return;
 
     const indices = this.getJointIndices();
-    if (!indices) {
-      this.feedback.set(
-        '⚠️ Configuration articulation manquante');
-      return;
-    }
+    if (!indices) return;
 
     this.drawSkeleton(
-      ctx, results.poseLandmarks, canvas, indices);
+      ctx, results.poseLandmarks,
+      canvas, indices);
 
+    // ── Phase CALIBRATION ──────────────────
     if (this.phase() === 'CALIBRATION') {
-      const bodyVisible = this.checkBodyVisibility(
-        results.poseLandmarks);
+      const bodyVisible =
+        this.checkBodyVisibility(
+          results.poseLandmarks);
       this.drawCalibrationGuide(ctx, canvas);
       this.handleCalibration(bodyVisible);
       return;
     }
 
+    // ── Phase SESSION ──────────────────────
     if (this.phase() === 'SESSION') {
 
-      const jointsVisible = this.areTrackedJointsVisible(
-        results.poseLandmarks, indices);
-
-      if (!jointsVisible) {
-        const missingPart = this.getMissingBodyPart(
+      const jointsVisible =
+        this.areTrackedJointsVisible(
           results.poseLandmarks, indices);
 
-        this.feedback.set(
-          `⚠️ Je ne vois plus votre ${missingPart}`
-          + ` — replacez-vous face à la caméra`);
+      if (!jointsVisible) {
+        const missingPart =
+          this.getMissingBodyPart(
+            results.poseLandmarks, indices);
+
+        // ✅ Message visuel STABLE — ne clignote pas
+        // Reste affiché jusqu'au repositionnement
+        this.feedback.set('⚠️ Repositionnez-vous');
         this.isConformant.set(false);
         this.drawFeedback(ctx, canvas, false);
 
@@ -651,58 +677,56 @@ private loadCurrentLevel(): void {
         this.holdStartTime = 0;
         this.holdAnnounced = false;
 
+        // ✅ Vocal avec interrupt (urgence) — 4s
         const now = Date.now();
-        if (now - this.lastVisibilityWarning > 4000) {
+        if (now - this.lastVisibilityWarning
+            > 4000) {
           this.speak(
-            `Je ne vois plus votre ${missingPart}`);
+            `Je ne vois plus votre ${missingPart}`,
+            true);
           this.lastVisibilityWarning = now;
         }
-
         return;
       }
 
       const angle = this.calculateAngle(
         results.poseLandmarks, indices);
-      const diff = Math.abs(angle - ex.targetAngle);
-      const conformant = diff <= ex.toleranceDeg;
+      const diff =
+        Math.abs(angle - ex.targetAngle);
+      const conformant =
+        diff <= ex.toleranceDeg;
 
       this.frameAngles = { main_angle: angle };
       this.isConformant.set(conformant);
 
+      // ✅ Seulement le canvas change à chaque
+      // frame — PAS le signal feedback
       this.handleSession(angle, conformant, ex);
       this.drawFeedback(ctx, canvas, conformant);
     }
   }
 
   // ══════════════════════════════════════════
-  // VÉRIFICATION VISIBILITÉ CORPS (calibration)
+  // VÉRIFICATION VISIBILITÉ
   // ══════════════════════════════════════════
   private checkBodyVisibility(
     landmarks: any[]
   ): boolean {
     const required = [11, 12, 23, 24, 25, 26];
-    const threshold = 0.5;
-
     return required.every(idx => {
       const lm = landmarks[idx];
-      return lm && (lm.visibility ?? 1) > threshold;
+      return lm && (lm.visibility ?? 1) > 0.5;
     });
   }
 
-  // ══════════════════════════════════════════
-  // VÉRIFICATION VISIBILITÉ ARTICULATION CIBLE
-  // (phase SESSION uniquement)
-  // ══════════════════════════════════════════
   private areTrackedJointsVisible(
     landmarks: any[],
     jointIndices: number[]
   ): boolean {
-    const VISIBILITY_THRESHOLD = 0.6;
-
     return jointIndices.every(idx => {
       const lm = landmarks[idx];
-      return lm && (lm.visibility ?? 0)
-        >= VISIBILITY_THRESHOLD;
+      return lm
+        && (lm.visibility ?? 0) >= 0.6;
     });
   }
 
@@ -715,7 +739,6 @@ private loadCurrentLevel(): void {
     canvas: HTMLCanvasElement,
     jointIndices: number[]
   ): void {
-
     const connections = [
       [11, 12], [11, 23], [12, 24], [23, 24],
       [11, 13], [13, 15],
@@ -730,8 +753,8 @@ private loadCurrentLevel(): void {
       const start = landmarks[s];
       const end   = landmarks[e];
       if (!start || !end) return;
-
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.7)';
+      ctx.strokeStyle =
+        'rgba(59, 130, 246, 0.7)';
       ctx.beginPath();
       ctx.moveTo(
         start.x * canvas.width,
@@ -749,7 +772,6 @@ private loadCurrentLevel(): void {
       if (!lm) return;
       const x = lm.x * canvas.width;
       const y = lm.y * canvas.height;
-
       ctx.fillStyle   = 'rgba(255,255,255,0.9)';
       ctx.strokeStyle = 'rgba(59,130,246,1)';
       ctx.lineWidth   = 2;
@@ -759,14 +781,12 @@ private loadCurrentLevel(): void {
       ctx.stroke();
     });
 
-    // Articulation cible — DYNAMIQUE selon l'exercice
+    // Articulation cible — couleur dynamique
     const targetIdx = jointIndices[1];
     const target = landmarks[targetIdx];
-
     if (target) {
       const x = target.x * canvas.width;
       const y = target.y * canvas.height;
-
       ctx.strokeStyle = this.isConformant()
         ? 'rgba(34,197,94,0.5)'
         : 'rgba(239,68,68,0.5)';
@@ -774,7 +794,6 @@ private loadCurrentLevel(): void {
       ctx.beginPath();
       ctx.arc(x, y, 18, 0, 2 * Math.PI);
       ctx.stroke();
-
       ctx.fillStyle = this.isConformant()
         ? 'rgba(34,197,94,0.9)'
         : 'rgba(239,68,68,0.9)';
@@ -817,14 +836,13 @@ private loadCurrentLevel(): void {
     ctx.stroke();
 
     ctx.setLineDash([]);
-    ctx.fillStyle   = 'rgba(59,130,246,0.95)';
-    ctx.font        = 'bold 13px sans-serif';
-    ctx.textAlign   = 'center';
+    ctx.fillStyle    = 'rgba(59,130,246,0.95)';
+    ctx.font         = 'bold 13px sans-serif';
+    ctx.textAlign    = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(
       'Placez votre corps dans le cadre',
       cx, cy + 158);
-
     ctx.restore();
   }
 
@@ -842,7 +860,7 @@ private loadCurrentLevel(): void {
   }
 
   // ══════════════════════════════════════════
-  // CALIBRATION — ASSOUPLIE
+  // CALIBRATION
   // ══════════════════════════════════════════
   private handleCalibration(
     bodyVisible: boolean
@@ -854,13 +872,19 @@ private loadCurrentLevel(): void {
       this.calibCountdown.set(countdown);
 
       if (this.calibStable >= 50) {
+        this.resetSessionState();
         this.phase.set('SESSION');
         this.startSessionTimer();
         this.startMetricsInterval();
-        this.feedback.set('C\'est parti !');
-        this.speak('Calibration réussie.'
-          + ' L\'exercice commence.');
+        // ✅ Message visuel stable — ne changera
+        // plus jusqu'à un événement réel
+        this.feedback.set('Séance en cours');
+        this.speak(
+          'Calibration réussie.'
+          + ' L\'exercice commence.',
+          true);
       } else {
+        // ✅ Message de calibration stable
         this.feedback.set(
           `Restez visible... ${countdown}s`);
       }
@@ -869,18 +893,51 @@ private loadCurrentLevel(): void {
         this.calibStable - 3);
       this.calibCountdown.set(2);
       this.feedback.set(
-        'Placez votre corps entier dans le cadre');
+        'Placez votre corps dans le cadre');
     }
   }
 
   // ══════════════════════════════════════════
-  // SÉANCE ACTIVE — ✅ ENRICHIE
+  // RÉINITIALISATION COMPLÈTE AVANT SESSION
+  // ══════════════════════════════════════════
+  private resetSessionState(): void {
+    this.repPhase = 'NEUTRAL';
+    this.angleHistory = [];
+    this.lastAngle = 0;
+    this.allScores = [];
+    this.frameAngles = {};
+    this.autoCompleting = false;
+    this.holdStartTime = 0;
+    this.holdAnnounced = false;
+    this.lastFrameTime = 0;
+    this.lastVisibilityWarning = 0;
+    this.lastSpokenMsg = '';
+    this.lastSpeakTime = 0;
+    this.lastSentConformityPct = -1;
+    this.lastSentReps = -1;
+    this.repsCompleted.set(0);
+    this.conformityPct.set(0);
+    this.isConformant.set(false);
+    this.sessionTime.set(0);
+  }
+
+  // ══════════════════════════════════════════
+  // SÉANCE ACTIVE
+  // ✅ Règles feedback :
+  //   - Vocal uniquement pour les répétitions
+  //     et événements importants
+  //   - AUCUN message visuel qui change à chaque
+  //     frame — seulement le canvas (vert/rouge)
   // ══════════════════════════════════════════
   private handleSession(
     angle: number,
     conformant: boolean,
     ex: ExerciseResponse
   ): void {
+
+    // Protection NaN
+    if (isNaN(angle) || isNaN(ex.targetAngle))
+      return;
 
     const diff = Math.abs(angle - ex.targetAngle);
     const score = conformant
@@ -894,22 +951,7 @@ private loadCurrentLevel(): void {
       / this.allScores.length;
     this.conformityPct.set(Math.round(avg));
 
-    // ── ✅ Détection de vitesse de mouvement ───
-    // Repère un mouvement trop brusque entre deux
-    // frames successives, sans casser le calcul
-    // de répétition existant
-    const now = Date.now();
-    let movingTooFast = false;
-    if (this.lastFrameTime > 0) {
-      const deltaTime = now - this.lastFrameTime;
-      const deltaAngle = Math.abs(
-        angle - this.lastAngle);
-      if (deltaTime > 0 && deltaTime < 200) {
-        const speed = (deltaAngle / deltaTime) * 100;
-        movingTooFast = speed > this.MAX_ANGLE_SPEED;
-      }
-    }
-    this.lastFrameTime = now;
+    this.lastFrameTime = Date.now();
 
     const repDone = this.detectRepetition(
       angle, ex.targetAngle, ex.toleranceDeg);
@@ -918,132 +960,87 @@ private loadCurrentLevel(): void {
       const newReps = this.repsCompleted() + 1;
       this.repsCompleted.set(newReps);
 
-      // ✅ Messages de répétition enrichis —
-      // compte à rebours et variété au lieu de
-      // toujours "Répétition X"
-      const remaining = (ex.repsTarget ?? 10)
-        - newReps;
+      const remaining =
+        (ex.repsTarget ?? 10) - newReps;
+
+      // ✅ Règle 1 — vocal uniquement pour les reps
+      // Message court, clair, jamais coupé
       if (remaining <= 0) {
-        this.speak(this.pickMessage('repetition'));
+        // Géré plus bas par autoCompleting
       } else if (remaining === 1) {
         this.speak('Dernière répétition');
       } else if (remaining % 5 === 0) {
         this.speak(
           `Plus que ${remaining} répétitions`);
       } else {
-        this.speak(this.pickMessage('repetition'));
+        this.speak(`Répétition ${newReps}`);
       }
 
-      if (navigator.vibrate) {
+      // ✅ Vibration guardée
+      if (typeof navigator !== 'undefined'
+          && navigator.vibrate) {
         navigator.vibrate(50);
       }
-      this.startDirectionSpoken = false;
+
       this.holdStartTime = 0;
       this.holdAnnounced = false;
     }
 
-    // ── ✅ Choix du message — priorité du plus
-    // urgent (sécurité) au moins urgent ────────
-    if (movingTooFast) {
-      this.feedback.set(
-        '⚠️ ' + this.pickMessage('tropRapide'));
+    // ✅ Règle 2 & 3 — AUCUN message visuel d'angle
+    // Le contour vert/rouge du canvas suffit
+    // comme indicateur de conformité
 
-    } else if (conformant) {
-      // ✅ Détection de maintien en zone cible —
-      // encourage le patient à tenir la position
-      // plutôt que de juste passer vite au travers
-      if (this.holdStartTime === 0) {
-        this.holdStartTime = now;
-      }
-      const heldFor = now - this.holdStartTime;
+    // ✅ Règle 4 — objectif atteint
+    // ✅ Objectif atteint — message adapté au score
+const target = ex.repsTarget ?? 10;
+if (this.repsCompleted() >= target
+    && !this.autoCompleting) {
+  this.autoCompleting = true;
 
-      if (heldFor >= this.HOLD_TARGET_MS
-          && !this.holdAnnounced) {
-        const msg = this.pickMessage('maintienReussi');
-        this.feedback.set('✅ ' + msg);
-        this.speak(msg);
-        this.holdAnnounced = true;
-      } else {
-        this.feedback.set(
-          '✅ ' + this.pickMessage('conforme'));
-      }
-
-    } else {
-      this.holdStartTime = 0;
-      this.holdAnnounced = false;
-
-      if (diff <= ex.toleranceDeg * 1.5) {
-        this.feedback.set(
-          '🟡 ' + this.pickMessage('proche'));
-      } else {
-        // ✅ Distinction réelle dépassement vs
-        // pas-assez-loin, basée sur la phase du
-        // mouvement en cours (descente/montée)
-        const isOvershoot = this.isAngleOvershoot(
-          angle, ex.targetAngle, ex.toleranceDeg);
-
-        if (isOvershoot) {
-          this.feedback.set(
-            '↩️ ' + this.pickMessage('tropLoin'));
-        } else {
-          const prefix = angle < ex.targetAngle
-            ? '⬆️ ' : '⬇️ ';
-          this.feedback.set(
-            prefix + this.pickMessage('pasAssezLoin'));
-        }
-      }
-    }
-
-    if (this.repPhase === 'NEUTRAL'
-        && !this.startDirectionSpoken) {
-      this.speak('Pliez doucement jusqu\'au repère');
-      this.startDirectionSpoken = true;
-    }
-
-    const target = ex.repsTarget ?? 10;
-    if (this.repsCompleted() >= target
-        && !this.autoCompleting) {
-      this.autoCompleting = true;
-
-      if (this.timerInterval) {
-        clearInterval(this.timerInterval);
-        this.timerInterval = null;
-      }
-      if (this.metricsInterval) {
-        clearInterval(this.metricsInterval);
-        this.metricsInterval = null;
-      }
-
-      this.feedback.set('🎉 Objectif atteint ! Bravo !');
-      this.speak(
-        'Objectif atteint ! Excellent travail !');
-      setTimeout(() => this.completeSession(), 2500);
-    }
+  if (this.timerInterval) {
+    clearInterval(this.timerInterval);
+    this.timerInterval = null;
+  }
+  if (this.metricsInterval) {
+    clearInterval(this.metricsInterval);
+    this.metricsInterval = null;
   }
 
-  // ══════════════════════════════════════════
-  // ✅ NOUVEAU — DÉTECTION DE DÉPASSEMENT
-  // ══════════════════════════════════════════
-  // Distingue un vrai dépassement (le patient est
-  // allé au-delà de la zone tolérée DANS LE SENS
-  // du mouvement en cours) d'un simple "pas encore
-  // arrivé" de l'autre côté de la zone cible.
-  private isAngleOvershoot(
-    angle: number,
-    targetAngle: number,
-    toleranceDeg: number
-  ): boolean {
-    const lowerBound = targetAngle - toleranceDeg;
-    const upperBound = targetAngle + toleranceDeg;
+  // ✅ Message adapté selon le score réel
+  const score = this.conformityPct();
+  let vocalMessage: string;
+  let visualMessage: string;
 
-    if (this.repPhase === 'GOING_DOWN'
-        || this.repPhase === 'AT_BOTTOM') {
-      return angle < lowerBound;
-    }
-    if (this.repPhase === 'GOING_UP') {
-      return angle > upperBound;
-    }
-    return false;
+  if (score >= 80) {
+    visualMessage =
+      '🎉 Excellent ! Objectif atteint !';
+    vocalMessage =
+      'Objectif atteint. Excellent travail !';
+  } else if (score >= 60) {
+    visualMessage =
+      '✅ Objectif atteint. Continuez vos efforts !';
+    vocalMessage =
+      'Objectif atteint.'
+      + ' Continuez vos efforts, vous progressez.';
+  } else {
+    visualMessage =
+      '✅ Séance terminée. À améliorer.';
+    vocalMessage =
+      'Séance terminée.'
+      + ' Essayez d\'aller plus loin'
+      + ' la prochaine fois.';
+  }
+
+  this.feedback.set(visualMessage);
+
+  // ✅ completeSession() appelé UNIQUEMENT après
+  // la fin complète du message vocal — plus de
+  // coupure possible
+  this.speak(vocalMessage, true, () => {
+    setTimeout(
+      () => this.completeSession(), 500);
+  });
+}
   }
 
   // ══════════════════════════════════════════
@@ -1054,7 +1051,6 @@ private loadCurrentLevel(): void {
     targetAngle: number,
     toleranceDeg: number
   ): boolean {
-
     this.angleHistory.push(angle);
     if (this.angleHistory.length
         > this.HISTORY_SIZE) {
@@ -1066,26 +1062,25 @@ private loadCurrentLevel(): void {
 
     const inZone = Math.abs(
       smooth - targetAngle) <= toleranceDeg;
-    const descending = smooth < this.lastAngle - 2;
-    const ascending  = smooth > this.lastAngle + 2;
+    const descending =
+      smooth < this.lastAngle - 2;
+    const ascending =
+      smooth > this.lastAngle + 2;
 
     let repCompleted = false;
 
     switch (this.repPhase) {
       case 'NEUTRAL':
-        if (descending) {
+        if (descending)
           this.repPhase = 'GOING_DOWN';
-        }
         break;
       case 'GOING_DOWN':
-        if (inZone) {
+        if (inZone)
           this.repPhase = 'AT_BOTTOM';
-        }
         break;
       case 'AT_BOTTOM':
-        if (ascending) {
+        if (ascending)
           this.repPhase = 'GOING_UP';
-        }
         break;
       case 'GOING_UP':
         if (!inZone && ascending) {
@@ -1100,7 +1095,7 @@ private loadCurrentLevel(): void {
   }
 
   // ══════════════════════════════════════════
-  // CALCUL ANGLE ARTICULAIRE — DYNAMIQUE
+  // CALCUL ANGLE ARTICULAIRE
   // ══════════════════════════════════════════
   private calculateAngle(
     landmarks: any[],
@@ -1110,20 +1105,14 @@ private loadCurrentLevel(): void {
     const a = landmarks[aIdx];
     const b = landmarks[bIdx];
     const c = landmarks[cIdx];
-
     if (!a || !b || !c) return 0;
 
     return this.computeAngle(
-      [a.x, a.y],
-      [b.x, b.y],
-      [c.x, c.y]
-    );
+      [a.x, a.y], [b.x, b.y], [c.x, c.y]);
   }
 
   private computeAngle(
-    a: number[],
-    b: number[],
-    c: number[]
+    a: number[], b: number[], c: number[]
   ): number {
     const rad =
       Math.atan2(c[1] - b[1], c[0] - b[0])
@@ -1150,47 +1139,105 @@ private loadCurrentLevel(): void {
       const session = this.currentSession();
       if (!session) return;
 
+      const currentConformity =
+        this.conformityPct();
+      const currentReps = this.repsCompleted();
+
+      // ✅ N'envoie que si les valeurs changent
+      if (currentConformity ===
+            this.lastSentConformityPct
+          && currentReps === this.lastSentReps) {
+        return;
+      }
+
+      this.lastSentConformityPct = currentConformity;
+      this.lastSentReps = currentReps;
+
       this.sessionService.saveMetrics(
         session.id,
         {
           jointAngles: JSON.stringify(
             this.frameAngles),
-          conformityPct: this.conformityPct(),
-          repsAtMoment: this.repsCompleted()
+          conformityPct: currentConformity,
+          repsAtMoment: currentReps
         }
-      ).subscribe();
+      )
+      .pipe(takeUntil(this.destroy$), retry(2))
+      .subscribe({
+        error: (err) => {
+          console.warn(
+            'Métriques non sauvegardées :', err);
+        }
+      });
     }, 5000);
   }
 
   // ══════════════════════════════════════════
-  // FEEDBACK VOCAL
-  // ══════════════════════════════════════════
-  private speak(message: string): void {
-    if (!this.voiceEnabled()) return;
-
-    const now = Date.now();
-    if (message === this.lastSpokenMsg
-        && now - this.lastSpeakTime < 3000) {
-      return;
-    }
-
-    this.speech.cancel();
-    const utterance =
-      new SpeechSynthesisUtterance(message);
-    utterance.lang   = 'fr-FR';
-    utterance.rate   = 0.9;
-    utterance.pitch  = 1.0;
-    utterance.volume = 0.8;
-    this.speech.speak(utterance);
-
-    this.lastSpokenMsg = message;
-    this.lastSpeakTime = now;
+// FEEDBACK VOCAL — retourne l'utterance
+// pour pouvoir écouter l'événement onend
+// ══════════════════════════════════════════
+private speak(
+  message: string,
+  interrupt: boolean = false,
+  onEnd?: () => void
+): void {
+  if (!this.voiceEnabled() || !this.speech) {
+    // Si vocal désactivé, exécute onEnd
+    // immédiatement pour ne pas bloquer
+    onEnd?.();
+    return;
   }
 
+  const now = Date.now();
+  if (message === this.lastSpokenMsg
+      && now - this.lastSpeakTime < 5000
+      && !interrupt) {
+    onEnd?.();
+    return;
+  }
+
+  if (!interrupt && this.speech.speaking) {
+    // Attend 100ms et réessaie
+    setTimeout(() => {
+      this.speak(message, interrupt, onEnd);
+    }, 100);
+    return;
+  }
+
+  if (interrupt) {
+    this.speech.cancel();
+  }
+
+  const utterance =
+    new SpeechSynthesisUtterance(message);
+  utterance.lang   = 'fr-FR';
+  utterance.rate   = 0.85;
+  utterance.pitch  = 1.0;
+  utterance.volume = 1.0;
+
+  // ✅ onEnd — callback déclenché APRÈS la fin
+  // du message, jamais avant
+  if (onEnd) {
+    utterance.onend = () => onEnd();
+    // Sécurité — si onend ne se déclenche pas
+    // (bug navigateur), on exécute quand même
+    // le callback après un délai raisonnable
+    const wordCount = message.split(' ').length;
+    const estimatedDuration =
+      (wordCount / 2.5) * 1000 + 500; // ~2.5 mots/s
+    setTimeout(() => {
+      onEnd();
+    }, estimatedDuration);
+  }
+
+  this.speech.speak(utterance);
+  this.lastSpokenMsg = message;
+  this.lastSpeakTime = now;
+}
   toggleVoice(): void {
     this.voiceEnabled.update(v => !v);
     if (!this.voiceEnabled()) {
-      this.speech.cancel();
+      this.speech?.cancel();
     }
   }
 
@@ -1207,7 +1254,9 @@ private loadCurrentLevel(): void {
       finalScore: this.conformityPct(),
       repsCompleted: this.repsCompleted(),
       jointAngles: JSON.stringify(this.frameAngles)
-    }).subscribe({
+    })
+    .pipe(takeUntil(this.destroy$))
+    .subscribe({
       next: (result: SessionResponse) => {
         this.completedSession.set(result);
         this.xpGained.set(result.xpEarned ?? 0);
@@ -1215,7 +1264,8 @@ private loadCurrentLevel(): void {
       },
       error: (err: { message: string }) => {
         this.errorMsg.set(
-          err.message || 'Erreur complétion séance');
+          err.message
+          || 'Erreur complétion séance');
       }
     });
   }
@@ -1227,6 +1277,7 @@ private loadCurrentLevel(): void {
     if (session) {
       this.sessionService
         .interrupt(session.id)
+        .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: () => this.router.navigate(
             ['/patient/dashboard']),
@@ -1234,7 +1285,8 @@ private loadCurrentLevel(): void {
             ['/patient/dashboard'])
         });
     } else {
-      this.router.navigate(['/patient/dashboard']);
+      this.router.navigate(
+        ['/patient/dashboard']);
     }
   }
 
@@ -1304,7 +1356,7 @@ private loadCurrentLevel(): void {
 
     try { this.camera?.stop(); } catch {}
     try { this.pose?.close(); } catch {}
-    try { this.speech.cancel(); } catch {}
+    try { this.speech?.cancel(); } catch {}
 
     const video = this.videoRef?.nativeElement;
     if (video?.srcObject) {
