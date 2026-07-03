@@ -100,6 +100,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "http://localhost:4200",
+                "http://51.170.140.90:4200",
                 "https://kineai.app"
         ));
         config.setAllowedMethods(List.of(
