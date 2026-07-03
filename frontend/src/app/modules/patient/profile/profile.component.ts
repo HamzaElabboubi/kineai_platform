@@ -14,13 +14,15 @@ import { PatientResponse }
   from '../../../core/models/patient.model';
 import { PatientSidebarComponent }
   from '../../../shared/components/patient-sidebar/patient-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
   imports: [
     CommonModule, ReactiveFormsModule,
-    PatientSidebarComponent
+    PatientSidebarComponent, MobileHeaderComponent
   ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss'

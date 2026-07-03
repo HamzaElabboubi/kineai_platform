@@ -11,11 +11,13 @@ import { PatientResponse }
   from '../../core/models/patient.model';
 import { KineSidebarComponent }
   from '../../shared/components/kine-sidebar/kine-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../shared/components/mobile-header/mobile-header.component';
 
 @Component({
   selector: 'app-my-patients',
   standalone: true,
-  imports: [CommonModule, KineSidebarComponent],
+  imports: [CommonModule, KineSidebarComponent, MobileHeaderComponent],
   templateUrl: './my_patients.component.html',
   styleUrl: './my_patients.component.scss'
 })

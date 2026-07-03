@@ -8,12 +8,14 @@ import { PatientResponse }
   from '../../../core/models/patient.model';
 import { AdminSidebarComponent }
   from '../../../shared/components/admin-sidebar/admin-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-patients',
   standalone: true,
-  imports: [CommonModule, AdminSidebarComponent,FormsModule],
+  imports: [CommonModule, AdminSidebarComponent, MobileHeaderComponent, FormsModule],
   templateUrl: './patients.component.html',
   styleUrl: './patients.component.scss'
 })

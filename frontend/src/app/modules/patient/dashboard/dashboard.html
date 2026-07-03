@@ -2,7 +2,11 @@
 
   <app-patient-sidebar></app-patient-sidebar>
 
-  <div class="ml-56 flex-1">
+  <div class="lg:ml-56 flex-1 min-w-0">
+
+    <div class="px-4 pt-4 lg:hidden">
+      <app-mobile-header title="Accueil"></app-mobile-header>
+    </div>
 
     @if (isLoading()) {
       <div class="flex items-center justify-center
@@ -76,8 +80,9 @@
         }
 
         <!-- Header -->
-        <div class="flex items-start justify-between
-                    mb-6">
+        <div class="flex flex-col lg:flex-row
+                    lg:items-start lg:justify-between
+                    gap-4 mb-6">
           <div>
             <p class="text-gray-400 text-sm">Bonjour,</p>
             <h1 class="text-2xl font-bold text-gray-900
@@ -87,7 +92,8 @@
             <p class="text-sm text-gray-400 mt-1">
               Bonne reprise ! Continuez vos efforts.
             </p>
-            <div class="flex items-center gap-3 mt-4">
+            <div class="flex items-center gap-3 mt-4
+                        flex-wrap">
 
               <!-- Badge Pathologie -->
               <div class="flex items-center gap-3
@@ -232,7 +238,7 @@
         </div>
 
         <!-- KPI Cards -->
-        <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
           <div class="bg-white border border-gray-100
                       rounded-2xl p-5">
@@ -355,7 +361,7 @@
 </div>
 
         <!-- Donut + Plan actif -->
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
           <div class="bg-white border border-gray-100
                       rounded-2xl p-5">

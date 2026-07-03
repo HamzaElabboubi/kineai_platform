@@ -21,6 +21,8 @@ import {
 } from '../../../core/models/session.model';
 import { PatientSidebarComponent }
   from '../../../shared/components/patient-sidebar/patient-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 import { RehabPlanService }
   from '../../../core/services/rehab-plan.service';
 
@@ -35,7 +37,7 @@ type SessionPhase =
 @Component({
   selector: 'app-session',
   standalone: true,
-  imports: [CommonModule, PatientSidebarComponent],
+  imports: [CommonModule, PatientSidebarComponent, MobileHeaderComponent],
   templateUrl: './session.component.html',
   styleUrl: './session.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

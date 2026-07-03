@@ -4,11 +4,14 @@
   <app-patient-sidebar></app-patient-sidebar>
 
   <!-- ═══ CONTENU PRINCIPAL ═══ -->
-  <div class="ml-52 flex-1 flex flex-col min-h-screen">
+  <div class="lg:ml-52 flex-1 min-w-0 flex flex-col min-h-screen">
 
    <!-- ── PHASE SELECT ── -->
 @if (phase() === 'SELECT') {
-  <div class="flex-1 p-8">
+  <div class="flex-1 p-4 lg:p-8">
+    <div class="lg:hidden mb-4">
+      <app-mobile-header title="Séance"></app-mobile-header>
+    </div>
     <h1 class="text-2xl font-bold text-gray-900 mb-2">
       Choisir un exercice
     </h1>
@@ -16,7 +19,7 @@
       Sélectionnez l'exercice de votre plan
     </p>
 
-    <div class="flex gap-6">
+    <div class="flex flex-col lg:flex-row gap-6">
 
       <div class="flex-1">
         @if (errorMsg() && exercises().length === 0) {
@@ -45,7 +48,8 @@
             </p>
           </div>
         } @else {
-          <div class="grid grid-cols-2 gap-4 max-w-3xl">
+          <div class="grid grid-cols-1 sm:grid-cols-2
+                      gap-4 max-w-3xl">
             @for (ex of exercises(); track ex.id) {
               <div class="bg-white border rounded-2xl
                           overflow-hidden cursor-pointer
@@ -187,7 +191,7 @@
       <!-- Panneau erreur latéral si exercice existant
            mais erreur secondaire -->
       @if (errorMsg() && exercises().length > 0) {
-        <div class="w-72 flex-shrink-0">
+        <div class="w-full lg:w-72 flex-shrink-0">
           <div class="bg-amber-50 border border-amber-200
                       rounded-2xl p-5">
             <div class="w-10 h-10 bg-amber-100 rounded-full
@@ -224,7 +228,10 @@
     <!-- ── PHASE INSTRUCTIONS ── -->
     <!-- ── PHASE INSTRUCTIONS ── -->
 @if (phase() === 'INSTRUCTIONS') {
-  <div class="flex-1 p-8">
+  <div class="flex-1 p-4 lg:p-8">
+    <div class="lg:hidden mb-4">
+      <app-mobile-header title="Séance"></app-mobile-header>
+    </div>
 
     <h1 class="text-2xl font-bold text-gray-900 mb-1">
       Instructions
@@ -289,7 +296,7 @@
       }
     </div>
 
-    <div class="flex gap-6 max-w-3xl">
+    <div class="flex flex-col lg:flex-row gap-6 max-w-3xl">
 
       <!-- Image illustrative -->
       <div class="flex-1">
@@ -572,8 +579,8 @@
 
       <!-- Header -->
       <div class="bg-white border-b border-gray-200
-                  px-8 py-4 flex items-center
-                  justify-between">
+                  px-4 lg:px-8 py-4 flex items-center
+                  justify-between gap-3">
         <div>
           <h1 class="text-xl font-bold text-gray-900">
             Séance en cours
@@ -589,7 +596,7 @@
                        font-medium text-red-600
                        border border-red-200 px-4 py-2
                        rounded-xl hover:bg-red-50
-                       transition-colors">
+                       transition-colors flex-shrink-0">
           <svg class="w-4 h-4" fill="none"
                viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round"
@@ -600,12 +607,12 @@
                      01-3-3V7a3 3 0 013-3h4a3 3 0
                      013 3v1"/>
           </svg>
-          Quitter la séance
+          <span class="hidden sm:inline">Quitter la séance</span>
         </button>
       </div>
 
       <!-- Corps -->
-      <div class="flex-1 flex gap-6 p-6">
+      <div class="flex-1 flex flex-col lg:flex-row gap-6 p-4 lg:p-6">
 
         <!-- Zone vidéo + infos -->
         <div class="flex-1 flex flex-col gap-4">
@@ -868,7 +875,7 @@
         </div>
 
         <!-- ── Panel droit ── -->
-        <div class="w-80 flex flex-col gap-4
+        <div class="w-full lg:w-80 flex flex-col gap-4
                     flex-shrink-0">
 
           <!-- Progression séance -->
@@ -1125,9 +1132,9 @@
     <!-- ── PHASE COMPLETED ── -->
     @if (phase() === 'COMPLETED') {
       <div class="flex-1 flex items-center
-                  justify-center p-8">
+                  justify-center p-4 lg:p-8">
         <div class="bg-white border border-gray-200
-                    rounded-2xl p-10 text-center
+                    rounded-2xl p-6 lg:p-10 text-center
                     max-w-md w-full shadow-sm">
 
           <div class="w-16 h-16 bg-green-50 rounded-full
@@ -1195,9 +1202,9 @@
     <!-- ── PHASE ERROR ── -->
     @if (phase() === 'ERROR') {
       <div class="flex-1 flex items-center
-                  justify-center p-8">
+                  justify-center p-4 lg:p-8">
         <div class="bg-white border border-red-200
-                    rounded-2xl p-10 text-center
+                    rounded-2xl p-6 lg:p-10 text-center
                     max-w-md w-full">
           <div class="w-16 h-16 bg-red-50 rounded-full
                       flex items-center justify-center

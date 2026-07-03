@@ -7,13 +7,15 @@ import {
 } from '../../../core/services/alert.service';
 import { KineSidebarComponent }
   from '../../../shared/components/kine-sidebar/kine-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 
 type FilterTab = 'ALL' | 'UNRESOLVED' | 'RESOLVED';
 
 @Component({
   selector: 'app-alerts',
   standalone: true,
-  imports: [CommonModule, KineSidebarComponent],
+  imports: [CommonModule, KineSidebarComponent, MobileHeaderComponent],
   templateUrl: './alerts.component.html',
   styleUrl: './alerts.component.scss'
 })

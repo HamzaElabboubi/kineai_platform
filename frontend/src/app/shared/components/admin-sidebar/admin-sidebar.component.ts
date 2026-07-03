@@ -3,6 +3,7 @@ import { RouterLink, RouterLinkActive }
   from '@angular/router';
 import { AuthService }
   from '../../../core/services/auth.service';
+import { SidebarService } from '../../services/sidebar.service';
 
 
 @Component({
@@ -13,6 +14,7 @@ import { AuthService }
 })
 export class AdminSidebarComponent {
   private authService = inject(AuthService);
+  sidebar = inject(SidebarService);
   readonly logoUrl = 'assets/images/logo.png';
 
   // Badge sur "Validations" — passé par le parent

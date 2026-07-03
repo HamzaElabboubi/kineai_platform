@@ -2,7 +2,9 @@
 
   <app-patient-sidebar></app-patient-sidebar>
 
-  <div class="ml-56 flex-1 px-8 py-6">
+  <div class="lg:ml-56 flex-1 min-w-0 px-4 py-4 lg:px-8 lg:py-6">
+
+    <app-mobile-header title="Mes progrès"></app-mobile-header>
 
     <!-- Header -->
     <div class="flex items-center justify-between
@@ -89,7 +91,7 @@
       } @else {
 
         <!-- KPI Cards -->
-        <div class="grid grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
           <div class="bg-white border border-gray-100
                       rounded-2xl p-5">
@@ -185,9 +187,10 @@
         </div>
 
         <!-- Courbe + Répartition -->
-        <div class="grid grid-cols-3 gap-4 mb-4">
+        <div class="grid grid-cols-1 lg:grid-cols-3
+                    gap-4 mb-4">
 
-          <div class="col-span-2 bg-white border
+          <div class="lg:col-span-2 bg-white border
                       border-gray-100 rounded-2xl p-5">
             <h3 class="text-sm font-semibold
                        text-gray-900 mb-4">
@@ -221,6 +224,9 @@
               Historique des séances
             </h3>
           </div>
+
+          <div class="overflow-x-auto">
+          <div class="min-w-[600px] lg:min-w-0">
 
           <div class="px-5 py-2.5 grid grid-cols-5
                       gap-4 bg-gray-50 border-b
@@ -302,6 +308,9 @@
                 </div>
               </div>
             }
+          </div>
+
+          </div>
           </div>
         </div>
 

@@ -1,0 +1,29 @@
+<div class="lg:hidden sticky top-4 z-20 flex items-center
+            gap-3 bg-white border border-gray-100
+            rounded-xl shadow-sm px-4 py-3 mb-6">
+  <button type="button"
+          (click)="sidebar.toggle()"
+          aria-label="Ouvrir le menu"
+          class="w-9 h-9 flex items-center justify-center
+                 rounded-lg text-gray-500 hover:bg-gray-50
+                 hover:text-gray-700 transition-colors
+                 flex-shrink-0 -ml-1">
+    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+         stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round"
+            stroke-width="2"
+            d="M4 6h16M4 12h16M4 18h16"/>
+    </svg>
+  </button>
+  <div class="flex items-center gap-2">
+    <div class="w-7 h-7 bg-blue-600 rounded-lg
+                flex items-center justify-center
+                flex-shrink-0">
+      <img src="assets/images/logo.png" alt="KINEAI"
+           class="w-7 h-7 rounded-lg object-cover"/>
+    </div>
+    <span class="font-bold text-gray-900 text-sm">
+      {{ title() }}
+    </span>
+  </div>
+</div>

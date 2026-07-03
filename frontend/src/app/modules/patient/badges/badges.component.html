@@ -2,7 +2,9 @@
 
   <app-patient-sidebar></app-patient-sidebar>
 
-  <div class="ml-56 flex-1 px-8 py-6">
+  <div class="lg:ml-56 flex-1 min-w-0 px-4 py-4 lg:px-8 lg:py-6">
+
+    <app-mobile-header title="Mes badges"></app-mobile-header>
 
     <!-- Header -->
     <div class="flex items-center justify-between
@@ -46,7 +48,7 @@
     }
 
     @if (!isLoading()) {
-      <div class="grid grid-cols-3 gap-5">
+      <div class="grid grid-cols-2 sm:grid-cols-3 gap-5">
         @for (badge of allBadges; track badge.type) {
           <div class="bg-white rounded-2xl p-6
                       text-center border-2

@@ -12,6 +12,8 @@ import { DashboardPatientResponse }
   from '../../../core/models/patient.model';
 import { PatientSidebarComponent }
   from '../../../shared/components/patient-sidebar/patient-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -19,7 +21,7 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, PatientSidebarComponent],
+  imports: [CommonModule, PatientSidebarComponent, MobileHeaderComponent],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'
 })

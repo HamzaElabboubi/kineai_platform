@@ -7,6 +7,8 @@ import {
 } from '../../../core/services/badge.service';
 import { PatientSidebarComponent }
   from '../../../shared/components/patient-sidebar/patient-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 
 interface BadgeDefinition {
   type: string;
@@ -18,7 +20,7 @@ interface BadgeDefinition {
 @Component({
   selector: 'app-badges',
   standalone: true,
-  imports: [CommonModule, PatientSidebarComponent],
+  imports: [CommonModule, PatientSidebarComponent, MobileHeaderComponent],
   templateUrl: './badges.component.html',
   styleUrl: './badges.component.scss'
 })

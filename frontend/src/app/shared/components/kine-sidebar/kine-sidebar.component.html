@@ -1,7 +1,15 @@
-<aside class="w-56 bg-white border-r border-gray-100
-              flex flex-col fixed h-full z-10">
+@if (sidebar.isOpen()) {
+  <div class="fixed inset-0 bg-black/40 z-30 lg:hidden"
+       (click)="sidebar.close()"></div>
+}
 
-  <div class="px-5 py-5">
+<aside class="w-64 lg:w-56 bg-white border-r border-gray-100
+              flex flex-col fixed h-full z-40
+              transition-transform duration-200
+              lg:translate-x-0"
+       [class.-translate-x-full]="!sidebar.isOpen()">
+
+  <div class="px-5 py-5 flex items-center justify-between">
     <div class="flex items-center gap-2.5">
       <div class="w-8 h-8 bg-blue-600 rounded-lg
                   flex items-center justify-center">
@@ -25,6 +33,18 @@
         </p>
       </div>
     </div>
+    <button type="button"
+            (click)="sidebar.close()"
+            aria-label="Fermer le menu"
+            class="lg:hidden w-8 h-8 flex items-center
+                   justify-center rounded-lg text-gray-400
+                   hover:bg-gray-50 hover:text-gray-600">
+      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+           stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
   </div>
 
   <nav class="flex-1 px-3 pt-2">
@@ -33,6 +53,7 @@
       <a routerLink="/kine/dashboard"
          routerLinkActive="bg-blue-50 text-blue-700 font-medium"
          [routerLinkActiveOptions]="{exact: true}"
+         (click)="sidebar.close()"
          class="flex items-center gap-3 px-3 py-2.5
                 rounded-lg text-sm text-gray-500
                 hover:bg-gray-50 transition-colors">
@@ -51,6 +72,7 @@
 
       <a routerLink="/kine/patients"
          routerLinkActive="bg-blue-50 text-blue-700 font-medium"
+         (click)="sidebar.close()"
          class="flex items-center gap-3 px-3 py-2.5
                 rounded-lg text-sm text-gray-500
                 hover:bg-gray-50 transition-colors">
@@ -67,6 +89,7 @@
 
       <a routerLink="/kine/alerts"
          routerLinkActive="bg-blue-50 text-blue-700 font-medium"
+         (click)="sidebar.close()"
          class="flex items-center gap-3 px-3 py-2.5
                 rounded-lg text-sm text-gray-500
                 hover:bg-gray-50 transition-colors">

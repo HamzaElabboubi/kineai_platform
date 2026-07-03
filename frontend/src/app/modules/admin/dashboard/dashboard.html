@@ -4,7 +4,9 @@
     [pendingCount]="pendingKines().length">
   </app-admin-sidebar>
 
-  <div class="ml-56 flex-1 px-8 py-6">
+  <div class="lg:ml-56 flex-1 min-w-0 px-4 py-4 lg:px-8 lg:py-6">
+
+    <app-mobile-header title="Tableau de bord"></app-mobile-header>
 
     <!-- Header -->
     <div class="flex items-center justify-between
@@ -41,7 +43,7 @@
     }
 
     <!-- KPI Cards -->
-    <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
 
       <div class="bg-white border border-gray-100
                   rounded-2xl p-4">
@@ -150,7 +152,7 @@
     </div>
 
     <!-- Graphique + Demandes côte à côte -->
-    <div class="grid grid-cols-2 gap-4 mb-4">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
 
       <!-- Graphique répartition kinés -->
       <div class="bg-white border border-gray-100

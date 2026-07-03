@@ -14,6 +14,8 @@ import { DashboardKineResponse }
   from '../../../core/models/kine.model';
 import { KineSidebarComponent }
   from '../../../shared/components/kine-sidebar/kine-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -22,7 +24,7 @@ Chart.register(...registerables);
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    CommonModule, KineSidebarComponent, RouterLink
+    CommonModule, KineSidebarComponent, MobileHeaderComponent, RouterLink
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'

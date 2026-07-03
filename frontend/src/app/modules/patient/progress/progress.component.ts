@@ -9,6 +9,8 @@ import { SessionResponse }
   from '../../../core/models/session.model';
 import { PatientSidebarComponent }
   from '../../../shared/components/patient-sidebar/patient-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -16,7 +18,7 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [CommonModule, PatientSidebarComponent],
+  imports: [CommonModule, PatientSidebarComponent, MobileHeaderComponent],
   templateUrl: './progress.component.html',
   styleUrl: './progress.component.scss'
 })

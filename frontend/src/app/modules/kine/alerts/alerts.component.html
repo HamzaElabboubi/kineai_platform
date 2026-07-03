@@ -4,7 +4,9 @@
     [pendingCount]="unresolvedCount">
   </app-kine-sidebar>
 
-  <div class="ml-56 flex-1 px-8 py-6">
+  <div class="lg:ml-56 flex-1 min-w-0 px-4 py-4 lg:px-8 lg:py-6">
+
+    <app-mobile-header title="Alertes"></app-mobile-header>
 
     <!-- Header -->
     <div class="flex items-center justify-between
@@ -41,11 +43,11 @@
     }
 
     <!-- Onglets + Recherche -->
-    <div class="flex items-center justify-between
-                mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center
+                sm:justify-between gap-3 mb-4">
       <div class="flex items-center gap-1 bg-white
                   border border-gray-100 rounded-xl
-                  p-1 w-fit">
+                  p-1 max-w-full overflow-x-auto">
         <button (click)="setTab('UNRESOLVED')"
                 class="px-4 py-1.5 text-sm rounded-lg
                        transition-all"
@@ -82,7 +84,7 @@
         </button>
       </div>
 
-      <div class="relative w-72">
+      <div class="relative w-full sm:w-72">
         <svg class="w-4 h-4 text-gray-400 absolute
                     left-3 top-1/2 -translate-y-1/2"
              fill="none" viewBox="0 0 24 24"
@@ -145,7 +147,9 @@
       }
 
       @if (!isLoading() && filteredAlerts().length > 0) {
-        <div class="divide-y divide-gray-50">
+        <div class="overflow-x-auto">
+        <div class="divide-y divide-gray-50 min-w-[640px]
+                    lg:min-w-0">
           @for (alert of filteredAlerts();
                 track alert.id) {
             <div class="px-5 py-4 flex items-center
@@ -200,6 +204,7 @@
 
             </div>
           }
+        </div>
         </div>
       }
     </div>

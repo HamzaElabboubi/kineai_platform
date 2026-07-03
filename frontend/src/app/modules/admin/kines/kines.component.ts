@@ -7,13 +7,15 @@ import {
 } from '../../../core/services/admin.service';
 import { AdminSidebarComponent }
   from '../../../shared/components/admin-sidebar/admin-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 
 type FilterTab = 'ALL' | 'VALIDATED' | 'PENDING';
 
 @Component({
   selector: 'app-kines',
   standalone: true,
-  imports: [CommonModule, AdminSidebarComponent],
+  imports: [CommonModule, AdminSidebarComponent, MobileHeaderComponent],
   templateUrl: './kines.component.html',
   styleUrl: './kines.component.scss'
 })

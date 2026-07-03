@@ -11,6 +11,8 @@ import { AuthService }
   from '../../../core/services/auth.service';
 import { AdminSidebarComponent }
   from '../../../shared/components/admin-sidebar/admin-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -19,7 +21,7 @@ Chart.register(...registerables);
   selector: 'app-dashboard',
   standalone: true,
   imports: [
-    CommonModule, AdminSidebarComponent, RouterLink
+    CommonModule, AdminSidebarComponent, MobileHeaderComponent, RouterLink
   ],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.scss'

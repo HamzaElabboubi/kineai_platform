@@ -2,7 +2,9 @@
 
   <app-patient-sidebar></app-patient-sidebar>
 
-  <div class="ml-56 flex-1 px-8 py-6">
+  <div class="lg:ml-56 flex-1 min-w-0 px-4 py-4 lg:px-8 lg:py-6">
+
+    <app-mobile-header title="Mon profil"></app-mobile-header>
 
     <!-- Header avec illustration décorative -->
     <div class="relative mb-6 overflow-hidden">
@@ -76,10 +78,10 @@
     }
 
     @if (!isLoading() && profile()) {
-      <div class="grid grid-cols-3 gap-5">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         <!-- ═══ Colonne gauche ═══ -->
-        <div class="col-span-1 flex flex-col gap-5">
+        <div class="lg:col-span-1 flex flex-col gap-5">
 
           <!-- Carte identité -->
           <div class="bg-white border border-gray-100
@@ -238,7 +240,7 @@
         </div>
 
         <!-- ═══ Colonne droite ═══ -->
-        <div class="col-span-2 flex flex-col gap-5">
+        <div class="lg:col-span-2 flex flex-col gap-5">
 
           <!-- Informations personnelles -->
           <div class="bg-white border border-gray-100

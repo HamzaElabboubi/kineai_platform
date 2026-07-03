@@ -2,7 +2,9 @@
 
   <app-admin-sidebar></app-admin-sidebar>
 
-  <div class="ml-56 flex-1 px-8 py-6">
+  <div class="lg:ml-56 flex-1 min-w-0 px-4 py-4 lg:px-8 lg:py-6">
+
+    <app-mobile-header title="Patients"></app-mobile-header>
 
     <!-- Header -->
     <div class="flex items-center justify-between
@@ -39,11 +41,11 @@
     }
 
     <!-- Filtres + Recherche -->
-    <div class="flex items-center justify-between
-                mb-4">
+    <div class="flex flex-col sm:flex-row sm:items-center
+                sm:justify-between gap-3 mb-4">
       <div class="flex items-center gap-1 bg-white
                   border border-gray-100 rounded-xl
-                  p-1 w-fit">
+                  p-1 max-w-full overflow-x-auto">
         <button (click)="setLevelFilter('ALL')"
                 class="px-4 py-1.5 text-sm rounded-lg
                        transition-all"
@@ -82,7 +84,7 @@
         </button>
       </div>
 
-      <div class="relative w-72">
+      <div class="relative w-full sm:w-72">
         <svg class="w-4 h-4 text-gray-400 absolute
                     left-3 top-1/2 -translate-y-1/2"
              fill="none" viewBox="0 0 24 24"
@@ -134,6 +136,9 @@
 
       @if (!isLoading() && filteredPatients().length
            > 0) {
+
+      <div class="overflow-x-auto">
+      <div class="min-w-[880px] lg:min-w-0">
 
         <!-- En-tête colonnes -->
         <div class="px-5 py-2.5 grid grid-cols-7 gap-4
@@ -268,6 +273,9 @@
             </div>
           }
         </div>
+
+      </div>
+      </div>
       }
     </div>
 

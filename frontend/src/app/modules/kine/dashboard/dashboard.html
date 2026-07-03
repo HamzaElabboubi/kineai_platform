@@ -4,11 +4,13 @@
     [pendingCount]="dashboard()?.pendingAlerts ?? 0">
   </app-kine-sidebar>
 
-  <div class="ml-56 flex-1 px-8 py-6">
+  <div class="lg:ml-56 flex-1 min-w-0 px-4 py-4 lg:px-8 lg:py-6">
+
+    <app-mobile-header title="Tableau de bord"></app-mobile-header>
 
     <!-- Header -->
-    <div class="flex items-center justify-between
-                mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center
+                sm:justify-between gap-3 mb-6">
       <div>
         <h1 class="text-2xl font-bold text-gray-900">
           Bonjour Dr. {{ firstName }} 👋
@@ -151,7 +153,8 @@
     </p>
   }
 </div>
-     <div class="divide-y divide-gray-50">
+     <div class="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
+     <div class="divide-y divide-gray-50 min-w-max lg:min-w-0">
   @for (patient of filteredPatients;
         track patient.id) {
     <div class="px-5 py-4 flex items-center
@@ -237,6 +240,7 @@
 
     </div>
   }
+</div>
 </div>
 
       <!-- Alertes récentes -->

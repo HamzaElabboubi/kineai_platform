@@ -7,13 +7,15 @@ import {
 } from '../../../core/services/alert.service';
 import { PatientSidebarComponent }
   from '../../../shared/components/patient-sidebar/patient-sidebar.component';
+import { MobileHeaderComponent }
+  from '../../../shared/components/mobile-header/mobile-header.component';
 
 type FilterTab = 'ALL' | 'UNRESOLVED' | 'RESOLVED';
 
 @Component({
   selector: 'app-messages',
   standalone: true,
-  imports: [CommonModule, PatientSidebarComponent],
+  imports: [CommonModule, PatientSidebarComponent, MobileHeaderComponent],
   templateUrl: './messages.component.html',
   styleUrl: './messages.component.scss'
 })
