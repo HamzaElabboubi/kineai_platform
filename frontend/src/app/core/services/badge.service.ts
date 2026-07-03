@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../src/environments/environment';
 
 export interface BadgeResponse {
   id: string;
@@ -15,8 +16,7 @@ export interface BadgeResponse {
 })
 export class BadgeService {
 
-  private readonly API =
-    'http://localhost:8080/api/v1/badges';
+  private readonly API = `${environment.apiUrl}/api/v1/badges`;
   private http = inject(HttpClient);
 
   getMyBadges(): Observable<BadgeResponse[]> {

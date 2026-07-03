@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../src/environments/environment';
 
 export interface RehabPlanResponse {
   id: string;
@@ -22,8 +23,7 @@ export interface CreatePlanRequest {
 })
 export class RehabPlanService {
 
-  private readonly API =
-    'http://localhost:8080/api/v1/plans';
+  private readonly API = `${environment.apiUrl}/api/v1/plans`;
   private http = inject(HttpClient);
 
   generatePlan(

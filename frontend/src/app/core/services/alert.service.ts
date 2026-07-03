@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../src/environments/environment';
 
 export interface AlertResponse {
   id: string;
@@ -17,8 +18,10 @@ export interface AlertResponse {
 })
 export class AlertService {
 
-  private readonly API =
-    'http://localhost:8080/api/v1/alerts';
+ 
+ private readonly API = `${environment.apiUrl}/api/v1/alerts`;
+
+
   private http = inject(HttpClient);
 
   // ── Mes alertes en attente ────────────────

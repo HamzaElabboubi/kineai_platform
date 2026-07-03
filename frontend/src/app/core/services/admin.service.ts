@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { PatientResponse }
   from '../models/patient.model';
+  import { environment } from '../../../../src/environments/environment';
 
 export interface KineResponse {
   id: string;
@@ -29,7 +30,7 @@ export interface AdminStatsResponse {
 })
 export class AdminService {
 
-  private readonly API = 'http://localhost:8080/api/v1/admin';
+  private readonly API = `${environment.apiUrl}/api/v1/admin`;
   private http = inject(HttpClient);
 
   // ── Statistiques globales ─────────────────
@@ -89,7 +90,7 @@ export class AdminService {
   // ── Archiver un patient ────────────────────
   archivePatient(id: string): Observable<void> {
     return this.http.delete<void>(
-      `http://localhost:8080/api/v1/admin/patients/${id}`);
+      `${this.API}/patients/${id}`);
   }
 
   // ── Réactiver un patient ───────────────────

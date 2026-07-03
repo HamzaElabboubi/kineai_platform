@@ -3,13 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { DashboardPatientResponse, PatientResponse }
   from '../models/patient.model';
+  import { environment } from '../../../../src/environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PatientService {
 
-  private readonly API = 'http://localhost:8080/api/v1';
+  private readonly API = `${environment.apiUrl}/api/v1`;
   private http = inject(HttpClient);
 
   // ── Dashboard patient connecté ─────────────

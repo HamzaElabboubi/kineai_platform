@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpErrorResponse }
-  from '@angular/common/http';
+import { HttpClient, HttpErrorResponse }from '@angular/common/http';
+import { environment } from '../../../../src/environments/environment';
 import { Router } from '@angular/router';
 import { Observable, tap, catchError, throwError }
   from 'rxjs';
@@ -16,7 +16,7 @@ import {
 })
 export class AuthService {
 
-  private readonly API = 'http://localhost:8080/api/v1/auth';
+  private readonly API = `${environment.apiUrl}/api/v1/auth`;
 
   // ✅ inject() au lieu du constructeur
   private http   = inject(HttpClient);

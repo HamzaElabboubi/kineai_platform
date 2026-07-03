@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../src/environments/environment';
 import {
   CreateSessionRequest,
   SaveMetricsRequest,
@@ -11,8 +12,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class SessionService {
 
-  private readonly API =
-    'http://localhost:8080/api/v1/sessions';
+  private readonly API = `${environment.apiUrl}/api/v1/sessions`;
   private http = inject(HttpClient);
 
   start(req: CreateSessionRequest):

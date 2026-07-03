@@ -1,5 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { environment } from '../../../../environments/environment';
 import { ReactiveFormsModule, FormBuilder,
          FormGroup, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -92,7 +93,7 @@ export class RegisterComponent implements OnInit {
   loadKines(): void {
     this.http
       .get<KineOption[]>(
-        'http://localhost:8080/api/v1/kine/validated')
+        `${environment.apiUrl}/api/v1/kine/validated`)
       .subscribe({
         next: (kines: KineOption[]) => {
           this.kines = kines;
