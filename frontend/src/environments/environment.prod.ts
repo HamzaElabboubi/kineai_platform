@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://kineai.online:8080'
+  apiUrl: 'https://kineai.online'
 };
