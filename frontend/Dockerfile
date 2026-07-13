@@ -32,6 +32,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # précédent
 COPY --from=build /app/dist/kineai-frontend/browser /usr/share/nginx/html
 
-EXPOSE 4200
+EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

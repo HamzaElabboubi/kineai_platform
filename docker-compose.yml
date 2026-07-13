@@ -67,7 +67,8 @@ services:
     container_name: KINEAI-frontend
     restart: unless-stopped
     ports:
-      - "4200:4200"
+       - "80:80"      # ← était 4200:4200
+       - "443:443"    # ← ajouter pour HTTPS
     depends_on:
       - backend
 
