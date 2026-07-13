@@ -102,8 +102,8 @@ public class SecurityConfig {
                 "http://localhost:4200",
                 "http://51.170.140.90:4200",
                 "https://kineai.app",
-                "http://kineai.online",        // ← ajouter
-                "http://www.kineai.online"
+                "https://kineai.online",        // ← ajouter
+                "https://www.kineai.online"
         ));
         config.setAllowedMethods(List.of(
                 "GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

@@ -68,7 +68,10 @@ services:
     restart: unless-stopped
     ports:
        - "80:80"      # ← était 4200:4200
-       - "443:443"    # ← ajouter pour HTTPS
+       - "443:443"  
+    volumes:
+        - /etc/letsencrypt:/etc/letsencrypt:ro  # ← ajouter
+  # ← ajouter pour HTTPS
     depends_on:
       - backend
 
