@@ -43,3 +43,7 @@ springdoc:
 # ── Server ──────────────────────────────────────
 server:
   port: 8080
+#------- Disable email notifications-----
+  notifications:
+    email:
+      enabled: false

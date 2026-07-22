@@ -13,4 +13,5 @@ public interface RehabPlanRepository extends JpaRepository<RehabPlan, UUID> {
     List<RehabPlan> findByPatientIdOrderByStartDateDesc(UUID patientId);
     boolean existsByPatientIdAndStatus(
             UUID patientId, Status status);
+    List<RehabPlan> findByStatus(Status status);
 }

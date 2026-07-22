@@ -62,8 +62,14 @@ public class Session {
     @Builder.Default
     private Integer xpEarned = 0;
 
+    @Column(name = "pain_level", nullable = true,
+            columnDefinition = "INTEGER CHECK (pain_level >= 0 AND pain_level <= 10)")
+    private Integer painLevel; // Auto-déclaré par le patient — optionnel
+
     @Column(name = "joint_angles", nullable = true,columnDefinition = "TEXT")
     private String jointAngles;
+
+
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -76,6 +82,12 @@ public class Session {
             fetch = FetchType.LAZY)
     @Builder.Default
     private List<SessionMetrics> metrics = new ArrayList<>();
+
+    //------- PatientPhaseProgress Relation--------
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "patient_phase_progress_id", nullable = true)
+    private PatientPhaseProgress patientPhaseProgress;
+//-----------------------------------------------
 
 
 
