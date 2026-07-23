@@ -13,16 +13,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Jobs planifiés — mono-instance (1 seul backend Oracle Cloud).
- * Si passage en multi-instances plus tard, ajouter un verrou
- * distribué (ShedLock) pour éviter les doublons d'exécution.
- */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -33,25 +29,25 @@ public class NotificationScheduler {
     private final NotificationService notificationService;
     private final AlertService alertService;
 
+    // ✅ Horloge injectable — Spring fournit l'horloge système
+    // réelle en production ; les tests injectent une horloge
+    // fixe pour un comportement 100% déterministe
+    private final Clock clock;
+
     private static final SessionDay[] TRAINING_DAYS = {
             SessionDay.LUNDI,
             SessionDay.MERCREDI,
             SessionDay.VENDREDI
     };
 
-    // ══════════════════════════════════════════
-    // Rappel de séance — chaque jour à 18h
-    // ══════════════════════════════════════════
     @Scheduled(cron = "0 0 18 * * *")
     public void sendSessionReminders() {
         log.info("Job sendSessionReminders — démarrage");
 
-        // ⚠️ Nécessite d'ajouter à RehabPlanRepository :
-        // List<RehabPlan> findByStatus(Status status);
         List<RehabPlan> activePlans =
                 planRepository.findByStatus(Status.ACTIVE);
 
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
+        LocalDate tomorrow = LocalDate.now(clock).plusDays(1);
         SessionDay tomorrowDay = toSessionDay(tomorrow);
 
         if (!isTrainingDay(tomorrowDay)) {
@@ -84,7 +80,7 @@ public class NotificationScheduler {
                     NotificationType.SESSION_REMINDER,
                     "Vous avez une séance de rééducation prévue"
                             + " demain. Restez motivé(e) !",
-                    LocalDate.now().atStartOfDay());
+                    LocalDate.now(clock).atStartOfDay());
             sentCount++;
         }
 
@@ -92,9 +88,6 @@ public class NotificationScheduler {
                 + " {} rappel(s) envoyé(s)", sentCount);
     }
 
-    // ══════════════════════════════════════════
-    // Détection inactivité — chaque jour à 8h
-    // ══════════════════════════════════════════
     @Scheduled(cron = "0 0 8 * * *")
     public void checkMissedSessions() {
         log.info("Job checkMissedSessions — démarrage");
@@ -102,7 +95,8 @@ public class NotificationScheduler {
         List<RehabPlan> activePlans =
                 planRepository.findByStatus(Status.ACTIVE);
 
-        LocalDateTime threshold = LocalDateTime.now().minusDays(3);
+        LocalDateTime threshold = LocalDateTime.now(clock)
+                .minusDays(3);
 
         int alertCount = 0;
         for (RehabPlan plan : activePlans) {
@@ -134,7 +128,7 @@ public class NotificationScheduler {
                             + " pas fait de séance. Reprenez"
                             + " dès aujourd'hui pour ne pas"
                             + " perdre votre progression !",
-                    LocalDate.now().atStartOfDay());
+                    LocalDate.now(clock).atStartOfDay());
 
             alertCount++;
         }
@@ -144,7 +138,6 @@ public class NotificationScheduler {
                 alertCount);
     }
 
-    // ── Helpers ────────────────────────────────
     private boolean isTrainingDay(SessionDay day) {
         for (SessionDay trainingDay : TRAINING_DAYS) {
             if (trainingDay == day) return true;

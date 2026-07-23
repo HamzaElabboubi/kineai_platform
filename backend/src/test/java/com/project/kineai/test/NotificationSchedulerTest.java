@@ -18,13 +18,14 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.DayOfWeek;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -45,7 +46,16 @@ class NotificationSchedulerTest {
     @Mock
     private AlertService alertService;
 
-    @InjectMocks
+    // ✅ Horloge fixe — Mardi 21 juillet 2026, 10h00.
+    // "Demain" = mercredi = TOUJOURS un jour d'entraînement,
+    // peu importe le jour réel d'exécution du test.
+    private static final Clock FIXED_CLOCK = Clock.fixed(
+            LocalDate.of(2026, 7, 21)
+                    .atTime(10, 0)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant(),
+            ZoneId.systemDefault());
+
     private NotificationScheduler scheduler;
 
     private Patient patient;
@@ -54,6 +64,12 @@ class NotificationSchedulerTest {
 
     @BeforeEach
     void setUp() {
+        // ✅ Construction manuelle — le Clock n'est pas un
+        // @Mock, c'est une valeur fixe réelle
+        scheduler = new NotificationScheduler(
+                planRepository, sessionRepository,
+                notificationService, alertService, FIXED_CLOCK);
+
         kine = Kinesitherapeute.builder()
                 .id(UUID.randomUUID())
                 .fullName("Dr. Martin")
@@ -70,22 +86,18 @@ class NotificationSchedulerTest {
                 .patient(patient)
                 .status(Status.ACTIVE)
                 .currentWeek(1)
-                .startDate(LocalDate.now().minusDays(2))
+                .startDate(LocalDate.of(2026, 7, 21).minusDays(2))
                 .build();
     }
 
-    // ══════════════════════════════════════════
-    // SEND SESSION REMINDERS
-    // ══════════════════════════════════════════
     @Nested
     @DisplayName("sendSessionReminders()")
     class SendSessionRemindersTests {
 
         @Test
-        @DisplayName("Séances restantes cette semaine —"
-                + " notifie uniquement si demain est un"
-                + " jour d'entraînement")
-        void sendSessionReminders_seancesRestantes_notifieSiJourEntrainement() {
+        @DisplayName("Demain est un jour d'entraînement et"
+                + " séances restantes — envoie une notification")
+        void sendSessionReminders_jourEntrainementEtSeancesRestantes_envoieNotification() {
             when(planRepository.findByStatus(Status.ACTIVE))
                     .thenReturn(List.of(plan));
             when(sessionRepository
@@ -97,24 +109,11 @@ class NotificationSchedulerTest {
 
             scheduler.sendSessionReminders();
 
-            DayOfWeek tomorrow = LocalDate.now()
-                    .plusDays(1).getDayOfWeek();
-            boolean isTrainingDay =
-                    tomorrow == DayOfWeek.MONDAY
-                            || tomorrow == DayOfWeek.WEDNESDAY
-                            || tomorrow == DayOfWeek.FRIDAY;
-
-            if (isTrainingDay) {
-                verify(notificationService, times(1))
-                        .createNotification(eq(patient),
-                                eq(NotificationType.SESSION_REMINDER),
-                                any(String.class),
-                                any(LocalDateTime.class));
-            } else {
-                verify(notificationService, never())
-                        .createNotification(any(), any(),
-                                any(), any());
-            }
+            verify(notificationService, times(1))
+                    .createNotification(eq(patient),
+                            eq(NotificationType.SESSION_REMINDER),
+                            any(String.class),
+                            any(LocalDateTime.class));
         }
 
         @Test
@@ -135,11 +134,44 @@ class NotificationSchedulerTest {
             verify(notificationService, never())
                     .createNotification(any(), any(), any(), any());
         }
+
+        @Test
+        @DisplayName("Demain n'est pas un jour d'entraînement"
+                + " — n'appelle même pas le repository de séances")
+        void sendSessionReminders_pasJourEntrainement_nAppellePasSessionRepository() {
+            // Horloge fixée sur un JEUDI — demain = vendredi...
+            // non attends, on veut tester le cas négatif : on fixe
+            // sur MERCREDI, donc demain = jeudi = pas un jour
+            // d'entraînement
+            Clock jeudiClock = Clock.fixed(
+                    LocalDate.of(2026, 7, 22) // mercredi
+                            .atTime(10, 0)
+                            .atZone(ZoneId.systemDefault())
+                            .toInstant(),
+                    ZoneId.systemDefault());
+
+            NotificationScheduler schedulerJeudi =
+                    new NotificationScheduler(
+                            planRepository, sessionRepository,
+                            notificationService, alertService,
+                            jeudiClock);
+
+            when(planRepository.findByStatus(Status.ACTIVE))
+                    .thenReturn(List.of(plan));
+
+            schedulerJeudi.sendSessionReminders();
+
+            // ✅ Le repository de séances ne doit JAMAIS être
+            // appelé — le code s'arrête avant, donc aucun stub
+            // n'est nécessaire ici (pas de UnnecessaryStubbingException)
+            verify(sessionRepository, never())
+                    .countByRehabPlanIdAndSessionStatusAndStartTimeBetween(
+                            any(), any(), any(), any());
+            verify(notificationService, never())
+                    .createNotification(any(), any(), any(), any());
+        }
     }
 
-    // ══════════════════════════════════════════
-    // CHECK MISSED SESSIONS
-    // ══════════════════════════════════════════
     @Nested
     @DisplayName("checkMissedSessions()")
     class CheckMissedSessionsTests {
@@ -154,7 +186,7 @@ class NotificationSchedulerTest {
             Session ancienneSeance = Session.builder()
                     .id(UUID.randomUUID())
                     .patient(patient)
-                    .startTime(LocalDateTime.now().minusDays(5))
+                    .startTime(LocalDateTime.of(2026, 7, 16, 10, 0))
                     .sessionStatus(SessionStatus.COMPLETED)
                     .build();
 
@@ -187,7 +219,7 @@ class NotificationSchedulerTest {
             Session seanceRecente = Session.builder()
                     .id(UUID.randomUUID())
                     .patient(patient)
-                    .startTime(LocalDateTime.now().minusHours(6))
+                    .startTime(LocalDateTime.of(2026, 7, 21, 4, 0))
                     .sessionStatus(SessionStatus.COMPLETED)
                     .build();
 
